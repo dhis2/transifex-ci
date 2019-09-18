@@ -116,8 +116,7 @@ for p in $projects; do
   rm /tmp/proj$$
 
   # Loop through all APP projects
-  # if [[ $tags == *"$SYNC_FLAG"* ]]; then
-  if [[ $name == *"APP: Not Usage Analytics"* ]]; then
+  if [[ $tags == *"$SYNC_FLAG"* ]]; then
 
     # Get the list of branches translated in this project
     # The branch names are at the beginnig of each resource slug, followed by double hyphen '--'
