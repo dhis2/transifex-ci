@@ -4,7 +4,7 @@
 
 # set up the python environment
 if [ ! -d "venv" ]; then
-    source venv_setup
+    source setup_venv
 fi
 source ./venv/bin/activate
 
