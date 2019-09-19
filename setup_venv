@@ -1,0 +1,5 @@
+python3 -m venv --without-pip venv
+source venv/bin/activate
+curl https://bootstrap.pypa.io/get-pip.py | python3
+pip3 install tx
+deactivate
