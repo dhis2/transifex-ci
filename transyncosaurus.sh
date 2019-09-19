@@ -15,7 +15,7 @@ for exe in "git" "hub" "tx" "jq"; do
   fi
 done
 
-# set -xv
+set -xv
 
 
 GITHUB_BASE="https://${GHTOKEN}@github.com/dhis2/"
