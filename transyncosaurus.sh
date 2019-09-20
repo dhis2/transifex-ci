@@ -18,7 +18,8 @@ done
 # set -xv
 
 
-GITHUB_BASE="https://${GITHUB_TOKEN}@github.com/dhis2/"
+GITHUB_BASE="https://github.com/dhis2/"
+GITHUB_CLONE_BASE="https://${GITHUB_USER}:${GITHUB_PASSWORD}@github.com/dhis2/"
 LANG_FILE=${PWD}/$(dirname ${0})/transifex_languages.json
 SYNC_DATE=$(date +"%Y%m%d_%H%M%S")
 TX_API=https://www.transifex.com/api/2
@@ -136,7 +137,7 @@ for p in $projects; do
     branches=$(curl -s -L --user api:$TXTOKEN -X GET "$TX_API/project/${p//\"/}/resources" | jq '.[].slug | split("--")[0] | split("-") | join(".")' | uniq)
 
     # clone the project repository and go into it
-    git clone ${GITHUB_BASE}${gitslug}
+    git clone ${GITHUB_CLONE_BASE}${gitslug}
     pushd "$gitslug"
     git_setup
 
