@@ -18,7 +18,7 @@ done
 # set -xv
 
 
-GITHUB_BASE="https://dhis2-bot:${GHTOKEN}@github.com/dhis2/"
+GITHUB_BASE="https://github.com/dhis2/"
 LANG_FILE=${PWD}/$(dirname ${0})/transifex_languages.json
 SYNC_DATE=$(date +"%Y%m%d_%H%M%S")
 TX_API=https://www.transifex.com/api/2
@@ -108,6 +108,8 @@ make_branch_pr() {
 # --- starting point
 tx_init
 projects=$(curl -s -L --user api:$TXTOKEN -X GET "$TX_API/projects" | jq '.[].slug')
+mkdir temp
+pushd temp
 
 for p in $projects; do
   # Get the name and the git url of the project
@@ -124,7 +126,7 @@ for p in $projects; do
   # Loop through all APP projects
   if [[ $tags == *"$SYNC_FLAG"* ]]; then
 
-    echo "Syncing $name : $giturl"
+    echo "Syncing $name : $giturl : $gitslug"
 
     # Get the list of branches translated in this project
     # The branch names are at the beginnig of each resource slug, followed by double hyphen '--'
@@ -165,5 +167,7 @@ for p in $projects; do
     popd
 
   fi
+
+popd
 
 done
