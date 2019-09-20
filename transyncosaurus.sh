@@ -124,6 +124,8 @@ for p in $projects; do
   # Loop through all APP projects
   if [[ $tags == *"$SYNC_FLAG"* ]]; then
 
+    echo "Syncing $name : $giturl"
+
     # Get the list of branches translated in this project
     # The branch names are at the beginnig of each resource slug, followed by double hyphen '--'
     # The `2.xx` branches appear as `2-xx` and must be converted back (replace hyphen with period)
