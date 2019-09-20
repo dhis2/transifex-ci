@@ -15,7 +15,7 @@ for exe in "git" "hub" "tx" "jq"; do
   fi
 done
 
-set -xv
+# set -xv
 
 
 GITHUB_BASE="https://dhis2-bot:${GHTOKEN}@github.com/dhis2/"
@@ -130,7 +130,7 @@ for p in $projects; do
     # The branch names are at the beginnig of each resource slug, followed by double hyphen '--'
     # The `2.xx` branches appear as `2-xx` and must be converted back (replace hyphen with period)
     # We only want each branch to be listed once
-    branches=$(curl -s -L --user api:$TOKEN -X GET "$TX_API/project/${p//\"/}/resources" | jq '.[].slug | split("--")[0] | split("-") | join(".")' | uniq)
+    branches=$(curl -s -L --user api:$TXTOKEN -X GET "$TX_API/project/${p//\"/}/resources" | jq '.[].slug | split("--")[0] | split("-") | join(".")' | uniq)
 
     # clone the project repository and go into it
     git clone ${GITHUB_BASE}${gitslug}
