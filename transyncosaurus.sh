@@ -96,7 +96,7 @@ make_branch_pr() {
         # open the new pull request
         sed -i 's/WARNING/> :warning: **WARNING**/' ${commit_detail}
         echo -e "_Subsequent transifex translations will be added to this PR until it is merged._" >>${commit_detail}
-        hub pull-request -b $branch -F ${commit_detail}
+        hub pull-request -b $branch -F ${commit_detail} -l "translations"
       fi
     fi
 
