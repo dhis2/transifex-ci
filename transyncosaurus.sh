@@ -168,6 +168,6 @@ for p in $projects; do
 
   fi
 
-popd
-
 done
+
+popd
