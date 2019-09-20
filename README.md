@@ -14,7 +14,9 @@ The following tools are required to run the script:
 The script also relies on the following being set as env vars:
 
 - $TXTOKEN : API token for transifex
-- $GHTOKEN : Access token for guthub
+- $GITHUB_USER : guthub user name
+- $GITHUB_PASSWORD : guthub password
+- $GITHUB_TOKEN : Access token for guthub (not 100% sure we need this!)
 
 ## Script
 
