@@ -18,7 +18,7 @@ done
 # set -xv
 
 
-GITHUB_BASE="https://${GHTOKEN}@github.com/dhis2/"
+GITHUB_BASE="https://dhis2-bot:${GHTOKEN}@github.com/dhis2/"
 LANG_FILE=${PWD}/$(dirname ${0})/transifex_languages.json
 SYNC_DATE=$(date +"%Y%m%d_%H%M%S")
 TX_API=https://www.transifex.com/api/2
