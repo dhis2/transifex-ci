@@ -41,6 +41,7 @@ password = $TXTOKEN" > ~/.transifexrc
 git_setup() {
   git config user.email "apps@dhis2.org"
   git config user.name "dhis2-bot"
+  git config hub.protocol https
 }
 
 make_branch_pr() {
