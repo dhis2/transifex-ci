@@ -8,12 +8,27 @@ if [ ! -d "venv" ]; then
 fi
 source ./venv/bin/activate
 
+# Ensure required tools are available
 for exe in "git" "hub" "tx" "jq"; do
   if [[ ! $(command -v $exe) ]]; then
     echo "This script requires $exe. Exiting"
     exit 1
   fi
 done
+
+# Ensure ENV variables are set
+if [[ -z "$TXTOKEN" ]]; then
+   echo "TXTOKEN environment variable must be set."
+   exit 1
+fi
+if [[ -z "$GITHUB_USER" ]]; then
+   echo "GITHUB_USER environment variable must be set."
+   exit 1
+fi
+if [[ -z "$GITHUB_PASSWORD" ]]; then
+   echo "GITHUB_PASSWORD environment variable must be set."
+   exit 1
+fi
 
 # set -xv
 
@@ -110,8 +125,8 @@ make_branch_pr() {
 # --- starting point
 tx_init
 projects=$(curl -s -L --user api:$TXTOKEN -X GET "$TX_API/projects" | jq '.[].slug')
-mkdir temp
-pushd temp
+mkdir temp$$
+pushd temp$$
 
 for p in $projects; do
   # Get the name and the git url of the project
@@ -173,3 +188,5 @@ for p in $projects; do
 done
 
 popd
+
+rm -rf temp$$
