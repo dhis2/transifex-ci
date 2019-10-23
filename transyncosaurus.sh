@@ -70,17 +70,19 @@ make_branch_pr() {
 
   # If a transifex PR is still open, use that branch
   # otherwise we create a new one later (if there are changes to push)
-  open_pr=$(hub pr list -b ${branch} -f %H%n | grep ${branch}-transifex-${code} | head -1) # there should only be one open at a time
+  open_pr=$(hub pr list --base ${branch} --format %H%n | grep ${branch}-transifex-${code} | head -1) # there shall only be one open at a time
   if [[ $open_pr != "" ]]; then
     # use the existing branch for the PR
     sync_branch=${open_pr}
     git checkout ${sync_branch}
+    # rebase to the head of the target branch
+    git rebase $branch
   fi
 
   # pull all transifex translations for that branch
   # only pull reviewed strings, ignoring resources with less than 10% translated
-  echo "tx pull -l $code -b $branch -f --skip --minimum-perc=20 # --mode reviewed"
-  tx pull -l $code -b $branch -f --skip --minimum-perc=20 # --mode reviewed
+  echo "tx pull --language $code --branch $branch --force --skip --minimum-perc=20 # --mode reviewed"
+  tx pull --language $code --branch $branch --force --skip --minimum-perc=20 # --mode reviewed
 
   # IF THERE ARE CHANGES:
   if [[ $(git status --porcelain) ]]; then
@@ -106,12 +108,12 @@ make_branch_pr() {
 
     # raise a PR on github (using hub command)
     if [[ $CREATE_PULL_REQUEST == 1 ]]; then
-      git push -u origin $sync_branch
+      git push --set-upstream origin $sync_branch
       if [[ $open_pr == "" ]]; then
         # open the new pull request
         sed -i 's/WARNING/> :warning: **WARNING**/' ${commit_detail}
         echo -e "_Subsequent transifex translations will be added to this PR until it is merged._" >>${commit_detail}
-        hub pull-request -b $branch -F ${commit_detail} -l "translations"
+        hub pull-request --base $branch --file ${commit_detail} --labels "translations"
       fi
     fi
 
