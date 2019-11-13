@@ -41,7 +41,7 @@ TX_API=https://www.transifex.com/api/2
 SYNC_FLAG="jenkins-app-sync"
 
 # --- options
-PUSH_TRANSLATION_STRINGS=0
+PUSH_TRANSLATION_STRINGS=1
 CREATE_PULL_REQUEST=1
 
 
@@ -169,7 +169,7 @@ for p in $projects; do
       # sync the current source files to transifex, for the current branch
       if [[ $PUSH_TRANSLATION_STRINGS == 1 ]]; then
         echo "tx push"
-        #      tx push -s -b -f --skip
+        tx push -s -b -f --skip
       fi
 
       for lang_code in $(cat ${LANG_FILE} | jq 'keys | .[]'); do
