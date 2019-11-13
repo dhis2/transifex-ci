@@ -28,6 +28,7 @@ This is a bash script that performs the following:
 
 - Loops over the projects in transifex looking for tags that include the `jenkins-app-sync` flag.
   - Loops over all branches that have resources in the project.
+    - Pushes the latest source strings to transifex
     - Loops over all [supported languages](#Supported_languages), doing the following:
       1. pull translations from transifex
       2. raises a PR on github if changes are found for the language  
