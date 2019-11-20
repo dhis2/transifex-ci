@@ -64,6 +64,7 @@ make_branch_pr() {
   local branch=$1
   local language=$2
   local code=$3
+  local pull_mode=$4
 
   # checkout the branch
   git checkout $branch
@@ -81,8 +82,8 @@ make_branch_pr() {
 
   # pull all transifex translations for that branch
   # only pull reviewed strings, ignoring resources with less than 10% translated
-  echo "tx pull --language $code --branch $branch --force --skip --minimum-perc=20 # --mode reviewed"
-  tx pull --language $code --branch $branch --force --skip --minimum-perc=20 # --mode reviewed
+  echo "tx pull --language $code --branch $branch --force --skip --minimum-perc=20 --mode $pull_mode"
+  tx pull --language $code --branch $branch --force --skip --minimum-perc=20 --mode $pull_mode
 
   # IF THERE ARE CHANGES:
   if [[ $(git status --porcelain) ]]; then
@@ -148,6 +149,17 @@ for p in $projects; do
 
     echo "Syncing $name : $giturl : $gitslug"
 
+    tx_pull_mode = "developer"
+    if [[ $gitslug == "dhis2-android-capture-app" ]]; then
+      tx_pull_mode = "reviewed"
+    fi
+    # The supported modes are:
+    #   developer: The files downloaded will be compatible with the i18n support of the development framework you’re using. This is the default mode when you run tx pull. Use this mode when you intend to use the file e.g. in production. This mode auto-fills empty translations with the source language text for most of the file formats we support, which is critical in the case of file formats that require all translations to be non-empty.
+    #   translator: The files will be suitable for offline translation. Equivalent to the web app's option "Download file to translate" (for_translation).
+    #   reviewed: The files will include reviewed strings in the translation language. All other strings will either be empty or in the source language depending on the file format.
+    #   onlytranslated: The files will include the translated strings. The untranslated ones will be left empty.
+    #   onlyreviewed: The files will only include reviewed strings. The rest of the strings will be returned empty regardless of if they’re translated or not.
+
     # Get the list of branches translated in this project
     # The branch names are at the beginnig of each resource slug, followed by double hyphen '--'
     # The `2.xx` branches appear as `2-xx` and must be converted back (replace hyphen with period)
@@ -178,7 +190,7 @@ for p in $projects; do
         code=${lang_code//\"/}
         echo "Checking ${branch} branch for changes to ${language} language..."
 
-        make_branch_pr $branch $language $code
+        make_branch_pr $branch $language $code $tx_pull_mode
       done
 
     done
