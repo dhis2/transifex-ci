@@ -95,7 +95,7 @@ make_branch_pr() {
     fi
 
     commit_detail=/tmp/commit_message_$$.md
-    echo -e "chore(translations): sync ${language} translations from transifex ($branch)\n" >${commit_detail}
+    echo -e "chore(translations): sync ${language} translations from transifex [skip ci] ($branch)\n" >${commit_detail}
     diff_added=$(git diff --numstat | awk '{print $1}')
     diff_deleted=$(git diff --numstat | awk '{print $2}')
     if [[ diff_added -lt diff_deleted ]]; then
