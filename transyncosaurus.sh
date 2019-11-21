@@ -109,13 +109,16 @@ make_branch_pr() {
 
     # raise a PR on github (using hub command)
     if [[ $CREATE_PULL_REQUEST == 1 ]]; then
-      git push --set-upstream origin $sync_branch
       if [[ $open_pr == "" ]]; then
+        git push --set-upstream origin $sync_branch
         # open the new pull request
         sed -i 's/WARNING/> :warning: **WARNING**/' ${commit_detail}
         echo -e "_Subsequent transifex translations will be added to this PR until it is merged._" >>${commit_detail}
         sleep 1
         hub pull-request --base $branch --file ${commit_detail} --labels "translations"
+      else
+        # need to force push the branch because of the previous rebase
+        git push -f origin $sync_branch
       fi
     fi
 
