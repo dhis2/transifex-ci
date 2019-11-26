@@ -183,8 +183,8 @@ for p in $projects; do
 
       # sync the current source files to transifex, for the current branch
       if [[ $PUSH_TRANSLATION_STRINGS == 1 ]]; then
-        echo "tx push"
-        tx push -s -b --skip
+        echo "pushing to transifex: tx push -source --branch $branch --skip"
+        tx push --source --branch $branch --skip
       fi
 
       for lang_code in $(cat ${LANG_FILE} | jq 'keys | .[]'); do
