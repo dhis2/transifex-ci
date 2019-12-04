@@ -9,7 +9,7 @@ fi
 source ./venv/bin/activate
 
 # Ensure required tools are available
-for exe in "git" "hub" "tx" "jq"; do
+for exe in "git" "hub" "tx" "jq" "iconv" "native2ascii"; do
   if [[ ! $(command -v $exe) ]]; then
     echo "This script requires $exe. Exiting"
     exit 1
@@ -84,6 +84,17 @@ make_branch_pr() {
   # only pull reviewed strings, ignoring resources with less than 10% translated
   echo "tx pull --language $code --branch $branch --force --skip --minimum-perc=20 --mode $pull_mode"
   tx pull --language $code --branch $branch --force --skip --minimum-perc=20 --mode $pull_mode
+
+  # ensure that the properties files have the correct encoding (escaped utf-8)
+  for propfile in $(grep "file_filter.*properties" .tx/config | sed "s/.*= *// ; s/<lang>/$code/")
+  do
+    # set encoding
+    iconv -f iso-8859-1 -t utf-8 ${propfile} -o ${propfile}.tmp
+    # escape characters
+    native2ascii ${propfile}.tmp ${propfile}
+    # remove temp file
+    rm ${propfile}.tmp
+  done
 
   # IF THERE ARE CHANGES:
   if [[ $(git status --porcelain) ]]; then
