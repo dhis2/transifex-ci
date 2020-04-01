@@ -21,37 +21,43 @@ if [[ -z "$TXTOKEN" ]]; then
    echo "TXTOKEN environment variable must be set."
    exit 1
 fi
-if [[ -z "$GITHUB_USER" ]]; then
-   echo "GITHUB_USER environment variable must be set."
-   exit 1
-fi
-if [[ -z "$GITHUB_PASSWORD" ]]; then
-   echo "GITHUB_PASSWORD environment variable must be set."
-   exit 1
-fi
+# if [[ -z "$GITHUB_USER" ]]; then
+#    echo "GITHUB_USER environment variable must be set."
+#    exit 1
+# fi
+# if [[ -z "$GITHUB_PASSWORD" ]]; then
+#    echo "GITHUB_PASSWORD environment variable must be set."
+#    exit 1
+# fi
 
 # set -xv
 
 
 GITHUB_BASE="https://github.com/dhis2/"
 GITHUB_CLONE_BASE="https://${GITHUB_USER}:${GITHUB_PASSWORD}@github.com/dhis2/"
-LANG_FILE=${PWD}/$(dirname ${0})/transifex_languages.json
 SYNC_DATE=$(date +"%Y%m%d_%H%M%S")
 TX_API=https://www.transifex.com/api/2
 SYNC_FLAG="jenkins-app-sync"
 
-# --- options
-PUSH_TRANSLATION_STRINGS=1
-CREATE_PULL_REQUEST=1
+# --- options : set the following to `0` to test without pushing anything to remote systems
+PUSH_TRANSLATION_STRINGS=0
+CREATE_PULL_REQUEST=0
 
 
 # --- functions
 tx_init() {
+
+if [[ ! -f ~/.transifexrc ]]
+then
+
   echo "[https://www.transifex.com]
 api_hostname = https://api.transifex.com
 hostname = https://www.transifex.com
 username = api
 password = $TXTOKEN" > ~/.transifexrc
+
+fi
+
 }
 
 git_setup() {
@@ -62,16 +68,16 @@ git_setup() {
 
 make_branch_pr() {
   local branch=$1
-  local language=$2
-  local code=$3
-  local pull_mode=$4
+  # local language=$2
+  # local code=$3
+  local pull_mode=$2
 
   # checkout the branch
   git checkout $branch
 
   # If a transifex PR is still open, use that branch
   # otherwise we create a new one later (if there are changes to push)
-  open_pr=$(hub pr list --base ${branch} --format %H%n | grep ${branch}-transifex-${code} | head -1) # there shall only be one open at a time
+  open_pr=$(hub pr list --base ${branch} --format %H%n | grep ${branch}-transifex-ALL | head -1) # there shall only be one open at a time
   if [[ $open_pr != "" ]]; then
     # use the existing branch for the PR
     sync_branch=${open_pr}
@@ -82,11 +88,11 @@ make_branch_pr() {
 
   # pull all transifex translations for that branch
   # only pull reviewed strings, ignoring resources with less than 10% translated
-  echo "tx pull --language $code --branch $branch --force --skip --minimum-perc=20 --mode $pull_mode"
-  tx pull --language $code --branch $branch --force --skip --minimum-perc=20 --mode $pull_mode
+  echo "tx pull --all --branch $branch --force --skip --minimum-perc=20 --mode $pull_mode"
+  tx pull --all --branch $branch --force --skip --minimum-perc=20 --mode $pull_mode
 
   # ensure that the properties files have the correct encoding (escaped utf-8)
-  for propfile in $(grep "file_filter.*properties" .tx/config | sed "s/.*= *// ; s/<lang>/$code/")
+  for propfile in $(grep "file_filter.*properties" .tx/config | sed "s/.*= *// ; s/<lang>/*/")
   do
     # set encoding
     iconv -f iso-8859-1 -t utf-8 ${propfile} -o ${propfile}.tmp
@@ -101,18 +107,21 @@ make_branch_pr() {
 
     if [[ $open_pr == "" ]]; then
       # we are on the base branch, so create a new branch for the PR
-      sync_branch=${branch}-transifex-${code}-${SYNC_DATE}
+      sync_branch=${branch}-transifex-ALL-${SYNC_DATE}
       git checkout -b ${sync_branch}
     fi
 
+# set -xv
     commit_detail=/tmp/commit_message_$$.md
-    echo -e "chore(translations): sync ${language} translations from transifex [skip ci] ($branch)\n" >${commit_detail}
+    echo -e "chore(translations): sync translations from transifex [skip ci] ($branch)\n" >${commit_detail}
     diff_added=$(git diff --stat | tail -1 | awk '{print $4}')
     diff_deleted=$(git diff --stat | tail -1 | awk '{print $6}')
     if [[ "$diff_added" -lt "$diff_deleted" ]]; then
       echo -e "WARNING: This automated sync from transifex removed more lines than it added." >>${commit_detail}
       echo -e "Please check carefully before merging!\n" >>${commit_detail}
     fi
+
+# unset -xv
 
     # commit back to git
     git add .
@@ -198,14 +207,8 @@ for p in $projects; do
         tx push --source --branch $branch --skip
       fi
 
-      for lang_code in $(cat ${LANG_FILE} | jq 'keys | .[]'); do
-        lang=$(cat ${LANG_FILE} | jq ".$lang_code")
-        language=${lang//[\" ()]/}
-        code=${lang_code//\"/}
-        echo "Checking ${branch} branch for changes to ${language} language..."
-
-        make_branch_pr $branch $language $code $tx_pull_mode
-      done
+      echo "Checking ${branch} branch for updated translations..."
+      make_branch_pr $branch $tx_pull_mode
 
     done
 
