@@ -21,14 +21,14 @@ if [[ -z "$TXTOKEN" ]]; then
    echo "TXTOKEN environment variable must be set."
    exit 1
 fi
-# if [[ -z "$GITHUB_USER" ]]; then
-#    echo "GITHUB_USER environment variable must be set."
-#    exit 1
-# fi
-# if [[ -z "$GITHUB_PASSWORD" ]]; then
-#    echo "GITHUB_PASSWORD environment variable must be set."
-#    exit 1
-# fi
+if [[ -z "$GITHUB_USER" ]]; then
+   echo "GITHUB_USER environment variable must be set."
+   exit 1
+fi
+if [[ -z "$GITHUB_PASSWORD" ]]; then
+   echo "GITHUB_PASSWORD environment variable must be set."
+   exit 1
+fi
 
 # set -xv
 
@@ -40,8 +40,8 @@ TX_API=https://www.transifex.com/api/2
 SYNC_FLAG="jenkins-app-sync"
 
 # --- options : set the following to `0` to test without pushing anything to remote systems
-PUSH_TRANSLATION_STRINGS=0
-CREATE_PULL_REQUEST=0
+PUSH_TRANSLATION_STRINGS=1
+CREATE_PULL_REQUEST=1
 
 
 # --- functions
