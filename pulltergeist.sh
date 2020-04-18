@@ -1,15 +1,10 @@
 #!/usr/bin/env bash
-# Script to exchange translation files between repo and Transifex via Jenkins.
-# It relies on $TXTOKEN and $GHTOKEN being set as env vars for the given job
+# Script to merge translation Pull Reqests in Github via Jenkins.
+# It relies on $TXTOKEN, $GITHUB_USER and $GITHUB_PASSWORD being set as env vars for the given job
 
-# set up the python environment
-if [ ! -d "venv" ]; then
-    source setup_venv
-fi
-source ./venv/bin/activate
 
 # Ensure required tools are available
-for exe in "git" "hub" "tx" "jq"; do
+for exe in "git" "hub" "jq"; do
   if [[ ! $(command -v $exe) ]]; then
     echo "This script requires $exe. Exiting"
     exit 1
