@@ -49,12 +49,13 @@ git_setup() {
 auto_varl () {
     local BASE="$1"
     declare -a array
-    readarray -t array < <(hub pr list --base="$BASE" --format='%I|%t%n')
+    readarray -t array < <(hub pr list --base="$BASE" --format='%I|%t|%sH%n')
 
     for PR in "${array[@]}"; do
         local pr_id="$(echo $PR | cut -d "|" -f 1)"
         local pr_title="$(echo $PR | cut -d "|" -f 2)"
         local scope="$(echo $pr_title | cut -d ":" -f 1)"
+        local pr_commit="$(echo $PR | cut -d "|" -f 3)"
         local body="/tmp/${pr_id}-body.json"
 
         if [ "chore(translations)" == "$scope" ]; then
@@ -68,8 +69,16 @@ auto_varl () {
   "merge_method": "squash"
 }
 EOF
-            res=$(hub api --method PUT "repos/{owner}/{repo}/pulls/${pr_id}/merge" --input "$body")
-            echo "Result: $res"
+            local ci_status="$(hub ci-status ${pr_commit})"
+            echo "CI status of PR: ${ci_status}"
+            # explicitly check if the CI status of the PR is successful
+            if [[ "${ci_status}" == "success" ]]
+            then
+                res=$(hub api --method PUT "repos/{owner}/{repo}/pulls/${pr_id}/merge" --input "$body")
+                echo "Result: $res"
+            fi
+
+
             rm "$body"
             sleep 1
         fi
