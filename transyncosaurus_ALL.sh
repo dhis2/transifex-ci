@@ -86,6 +86,10 @@ make_branch_pr() {
     git rebase $branch
   fi
 
+  # Temp - update the tx config mapping and remove any unmapped Uzbek files
+  find . -name "*uz@*.p[or]*" -exec rm {} ';'
+  sed -i 's/^lang_map.*/lang_map = fa_AF: prs, uz@Cyrl: uz_Cyrl, uz@Latn: uz_Latn/' .tx/config
+  
   # pull all transifex translations for that branch
   # only pull reviewed strings, ignoring resources with less than 10% translated
   echo "tx pull --all --branch $branch --force --skip --minimum-perc=20 --mode $pull_mode"
