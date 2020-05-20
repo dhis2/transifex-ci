@@ -89,7 +89,7 @@ make_branch_pr() {
   # Temp - update the tx config mapping and remove any unmapped Uzbek files
   find . -name "*uz@*.p[or]*" -exec rm {} ';'
   sed -i 's/^lang_map.*/lang_map = fa_AF: prs, uz@Cyrl: uz_Cyrl, uz@Latn: uz_Latn/' .tx/config
-  
+
   # pull all transifex translations for that branch
   # only pull reviewed strings, ignoring resources with less than 10% translated
   echo "tx pull --all --branch $branch --force --skip --minimum-perc=20 --mode $pull_mode"
@@ -117,7 +117,7 @@ make_branch_pr() {
 
 # set -xv
     commit_detail=/tmp/commit_message_$$.md
-    echo -e "chore(translations): sync translations from transifex ($branch)\n" >${commit_detail}
+    echo -e "fix(translations): sync translations from transifex ($branch)\n" >${commit_detail}
     diff_added=$(git diff --stat | tail -1 | awk '{print $4}')
     diff_deleted=$(git diff --stat | tail -1 | awk '{print $6}')
     if [[ "$diff_added" -lt "$diff_deleted" ]]; then

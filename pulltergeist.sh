@@ -58,7 +58,7 @@ auto_varl () {
         local pr_commit="$(echo $PR | cut -d "|" -f 3)"
         local body="/tmp/${pr_id}-body.json"
 
-        if [ "chore(translations)" == "$scope" ]; then
+        if [ "fix(translations)" == "$scope" ]; then
             pr_url=$(hub pr show "$pr_id" --url)
             echo "Transifex PR: ${pr_id} ${pr_title}"
             echo "${pr_url}"
