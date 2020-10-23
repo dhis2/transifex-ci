@@ -87,8 +87,8 @@ make_branch_pr() {
   fi
 
   # Temp - update the tx config mapping and remove any unmapped Uzbek files
-  find . -name "*uz@*.p[or]*" -exec rm {} ';'
-  sed -i 's/^lang_map.*/lang_map = fa_AF: prs, uz@Cyrl: uz_Cyrl, uz@Latn: uz_Latn/' .tx/config
+  #find . -name "*uz@*.p[or]*" -exec rm {} ';'
+  sed -i 's/^lang_map.*/lang_map = fa_AF: prs, uz@Cyrl: uz, uz@Latn: uz_Latn/' .tx/config
 
   # pull all transifex translations for that branch
   # only pull reviewed strings, ignoring resources with less than 10% translated
