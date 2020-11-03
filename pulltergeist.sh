@@ -129,7 +129,7 @@ for p in $projects; do
     
     # delete all transifex branches except for unmerged PRs
     hub pr list --format='%H%n' > OPEN_PRS
-    for g in $(git branch -r | grep transifex | sed 's/origin\///')
+    for g in $(git branch -r | grep transifex-ALL | sed 's/origin\///')
     do 
       if grep -q "$g" OPEN_PRS
       then
