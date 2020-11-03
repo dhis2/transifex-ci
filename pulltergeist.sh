@@ -126,6 +126,19 @@ for p in $projects; do
       auto_varl $branch
 
     done
+    
+    # delete all transifex branches except for unmerged PRs
+    hub pr list --format='%H%n' > OPEN_PRS
+    for g in $(git branch -r | grep transifex | sed 's/origin\///')
+    do 
+      if grep -q "$g" OPEN_PRS
+      then
+        echo "OPEN PR: $g"
+      else
+        git push -d origin $g
+      fi
+    done
+    rm -f OPEN_PRS
 
     # leave the repo folder
     popd
