@@ -114,7 +114,7 @@ for p in $projects; do
     branches=$(curl -s -L --user api:$TXTOKEN -X GET "$TX_API/project/${p//\"/}/resources" | jq '.[].slug | split("--")[0] | split("-") | join(".")' | uniq)
 
     # clone the project repository and go into it
-    git clone --depth 1 ${GITHUB_CLONE_BASE}${gitslug}
+    git clone --depth 1 --no-single-branch ${GITHUB_CLONE_BASE}${gitslug}
     pushd "$gitslug"
     git_setup
 
@@ -130,7 +130,6 @@ for p in $projects; do
     # delete all transifex branches except for unmerged PRs
     echo "Clean up merged transifex-ALL branches..."
     hub pr list --format='%H%n' > OPEN_PRS
-    git branch -r | grep 'transifex-ALL'  # output for debug purposes
     for g in $(git branch -r | grep 'transifex-ALL' | sed 's/origin\///')
     do 
       if grep -q "$g" OPEN_PRS
