@@ -128,17 +128,19 @@ for p in $projects; do
     done
     
     # delete all transifex branches except for unmerged PRs
+    echo "Clean up merged transifex-ALL branches..."
     hub pr list --format='%H%n' > OPEN_PRS
-    for g in $(git branch -r | grep transifex-ALL | sed 's/origin\///')
+    for g in $(git branch -r | grep 'transifex-ALL' | sed 's/origin\///')
     do 
       if grep -q "$g" OPEN_PRS
       then
-        echo "OPEN PR: $g"
+        echo "  Skipping open PR: $g"
       else
         git push -d origin $g
       fi
     done
     rm -f OPEN_PRS
+    echo "Cleaned."
 
     # leave the repo folder
     popd
