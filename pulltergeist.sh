@@ -130,6 +130,7 @@ for p in $projects; do
     # delete all transifex branches except for unmerged PRs
     echo "Clean up merged transifex-ALL branches..."
     hub pr list --format='%H%n' > OPEN_PRS
+    git branch -r | grep 'transifex-ALL'  # output for debug purposes
     for g in $(git branch -r | grep 'transifex-ALL' | sed 's/origin\///')
     do 
       if grep -q "$g" OPEN_PRS
