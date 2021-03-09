@@ -33,6 +33,8 @@ This is a bash script that performs the following:
     - Raises a PR on github if changes are found for any of the languages  
       (if a PR already exists, then the changes are pushed to that PR)
 
+> ./transyncosaurus_SINGLE.sh can be used to target a single app by temporarily adding the tag `jenkins-single-app-sync` to the transifex project
+
 ```
 ./pulltergeist.sh
 ```
