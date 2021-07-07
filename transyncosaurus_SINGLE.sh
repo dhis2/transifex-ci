@@ -218,6 +218,8 @@ for p in $projects; do
 
     # leave the repo folder
     popd
+    # delete the repo clone
+    rm -rf "$gitslug"
 
   fi
 
