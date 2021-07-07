@@ -2,6 +2,8 @@ name: Transifex App Sync - Single
 
 on:
   workflow_dispatch:
+    branches:
+      - main
 
 jobs:
   build:
@@ -27,7 +29,7 @@ jobs:
 
     - name: Run the script
       run: ./transyncosaurus_SINGLE.sh
-        shell: bash
+      shell: bash
       env:
         TXTOKEN: ${{ secrets.DHIS2_APPS_TX_TOKEN }}
         GITHUB_USER: ${{ secrets.DHIS2_GITHUB_USER }}
