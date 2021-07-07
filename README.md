@@ -10,6 +10,8 @@ The following tools are required to run the script:
 - hub
 - tx
 - jq
+- iconv
+- native2ascii
 
 The script also relies on the following being set as env vars:
 
