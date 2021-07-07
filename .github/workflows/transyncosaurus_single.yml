@@ -24,7 +24,6 @@ jobs:
     - name: Install custom tools
       run: |
           sudo apt-get update
-          sudo apt-get install iconv
           sudo apt-get install native2ascii
 
     - name: Run the script
