@@ -1,6 +1,9 @@
-name: Transifex App Sync - Single
+name: PR auto-merger
 
 on:
+  schedule:
+    # * is a special character in YAML so you have to quote this string
+    - cron:  '11 01 * * *'
   workflow_dispatch:
 
 jobs:
@@ -20,7 +23,7 @@ jobs:
         pip install transifex-client
 
     - name: Run the script
-      run: ./transyncosaurus_SINGLE.sh
+      run: ./pulltergeist.sh
       shell: bash
       env:
         TXTOKEN: ${{ secrets.DHIS2_APPS_TX_TOKEN }}
