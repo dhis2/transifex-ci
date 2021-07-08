@@ -3,7 +3,7 @@ name: Transifex App Sync
 on:
   schedule:
     # * is a special character in YAML so you have to quote this string
-    - cron:  '11 11 * * *'
+    - cron:  '11 23 * * *'
   workflow_dispatch:
 
 jobs:
