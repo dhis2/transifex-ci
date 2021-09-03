@@ -191,28 +191,34 @@ for p in $projects; do
     # The branch names are at the beginnig of each resource slug, followed by double hyphen '--'
     # The `2.xx` branches appear as `2-xx` and must be converted back (replace hyphen with period)
     # We only want each branch to be listed once
-    branches=$(curl -s -L --user api:$TXTOKEN -X GET "$TX_API/project/${p//\"/}/resources" | jq '.[].slug | split("--")[0] | split("-") | join(".")' | uniq)
+    branches=($(curl -s -L --user api:$TXTOKEN -X GET "$TX_API/project/${p//\"/}/resources" | jq '.[].slug | split("--")[0] | split("-") | join(".")' | uniq))
 
     # clone the project repository and go into it
     git clone ${GITHUB_CLONE_BASE}${gitslug}
     pushd "$gitslug"
     git_setup
 
+    #temporarily add new release branches
+    branches=( ${branches[@]} "37.x" "v37" )
+
     # loop over the branches
-    for b in $branches; do
+    for b in ${branches[@]}; do
       branch=${b//\"/}
 
       # checkout the branch
       git checkout $branch
+      status=$?
 
-      # sync the current source files to transifex, for the current branch
-      if [[ $PUSH_TRANSLATION_STRINGS == 1 ]]; then
-        echo "pushing to transifex: tx push -source --branch $branch --skip"
-        tx push --source --branch $branch --skip
+      if [[ $status == 0 ]]; then
+          # sync the current source files to transifex, for the current branch
+          if [[ $PUSH_TRANSLATION_STRINGS == 1 ]]; then
+            echo "pushing to transifex: tx push -source --branch $branch --skip"
+            tx push --source --branch $branch --skip
+          fi
+
+          echo "Checking ${branch} branch for updated translations..."
+          make_branch_pr $branch $tx_pull_mode
       fi
-
-      echo "Checking ${branch} branch for updated translations..."
-      make_branch_pr $branch $tx_pull_mode
 
     done
 
