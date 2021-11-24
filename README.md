@@ -46,3 +46,4 @@ This is a bash script that performs the following:
 - Loops over the projects in transifex looking for tags that include the `jenkins-pr-automerge` flag.
   - Loops over all branches that have resources in the project.
     - Merges any translation PRs on that branch
+
