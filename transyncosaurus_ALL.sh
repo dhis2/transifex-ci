@@ -199,7 +199,7 @@ for p in $projects; do
     git_setup
 
     #temporarily add new release branches
-    branches=( ${branches[@]} "37.x" "v37" )
+    branches=( ${branches[@]} "38.x" "v38" )
 
     # loop over the branches
     for b in ${branches[@]}; do
