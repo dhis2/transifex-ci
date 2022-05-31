@@ -40,7 +40,7 @@ fi
 tx_init
 pushd test
 
-tx_pull_mode="developer"
+tx_pull_mode="default"
 tx migrate
 echo "pushing to transifex: tx push -source --skip"
 tx push --source --skip
