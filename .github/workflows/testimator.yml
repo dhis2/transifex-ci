@@ -15,7 +15,9 @@ jobs:
         curl -o- https://raw.githubusercontent.com/transifex/cli/master/install.sh | bash
 
     - name: Run the script
-      run: ./test.sh
+      run: |
+        export PATH="/home/runner/work/transifex-ci/transifex-ci:$PATH"
+        ./test.sh
       shell: bash
       env:
         TXTOKEN: ${{ secrets.DHIS2_APPS_TX_TOKEN }}
