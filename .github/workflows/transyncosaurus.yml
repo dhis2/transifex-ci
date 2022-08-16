@@ -27,7 +27,7 @@ jobs:
     - name: Run the script
       run: python ./ui_language_spreader.py
       env:
-        TXTOKEN: ${{ secrets.DHIS2_APPS_TX_TOKEN }}
+        TX_TOKEN: ${{ secrets.DHIS2_APPS_TX_TOKEN }}
 
   build:
     name: Synchronise translations
