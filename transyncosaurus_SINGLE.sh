@@ -2,6 +2,8 @@
 # Script to exchange translation files between repo and Transifex via Jenkins.
 # It relies on $TXTOKEN and $GHTOKEN being set as env vars for the given job
 
+# set path to pick up tx
+export PATH="$PWD:$PATH"
 
 # Ensure required tools are available
 for exe in "git" "hub" "tx" "jq" "iconv" "native2ascii"; do
