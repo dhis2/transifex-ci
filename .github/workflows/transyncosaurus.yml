@@ -17,6 +17,7 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: '3.8'
+        
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
@@ -37,8 +38,9 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: '3.8'
+        
     - name: Install dependencies
-      rrun: curl -o- https://raw.githubusercontent.com/transifex/cli/master/install.sh | bash
+      run: curl -o- https://raw.githubusercontent.com/transifex/cli/master/install.sh | bash
       shell: bash
 
     - name: Run the script
