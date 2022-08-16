@@ -180,7 +180,7 @@ for p in $projects; do
 
     echo "Syncing $name : $giturl : $gitslug"
 
-    tx_pull_mode="developer"
+    tx_pull_mode="default"
     if [[ $gitslug == "dhis2-android-capture-app" ]]; then
       tx_pull_mode="reviewed"
     fi
