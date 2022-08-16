@@ -7,8 +7,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-
+  langsync:
+    name: Synchronise UI languages in transifex
     runs-on: ubuntu-20.04
 
     steps:
@@ -20,7 +20,26 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install transifex-client
+        pip install https://github.com/Philip-Larsen-Donnelly/translayer/archive/refs/tags/v0.0.6.zip
+
+    - name: Run the script
+      run: python ./ui_language_spreader.py
+      env:
+        TXTOKEN: ${{ secrets.DHIS2_APPS_TX_TOKEN }}
+
+  build:
+    name: Synchronise translations
+    runs-on: ubuntu-20.04
+    needs: langsync
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.8'
+    - name: Install dependencies
+      rrun: curl -o- https://raw.githubusercontent.com/transifex/cli/master/install.sh | bash
+      shell: bash
 
     - name: Run the script
       run: ./transyncosaurus_ALL.sh

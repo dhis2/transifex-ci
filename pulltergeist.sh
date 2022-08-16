@@ -31,7 +31,7 @@ fi
 GITHUB_BASE="https://github.com/dhis2/"
 GITHUB_CLONE_BASE="https://${GITHUB_USER}:${GITHUB_PASSWORD}@github.com/dhis2/"
 SYNC_DATE=$(date +"%Y%m%d_%H%M%S")
-TX_API=https://www.transifex.com/api/2
+TX_API3=https://rest.api.transifex.com
 MERGE_FLAG="jenkins-pr-automerge"
 
 # --- options : set the following to `0` to test without pushing anything to remote systems
@@ -86,17 +86,17 @@ EOF
 }
 
 # --- starting point
-projects=$(curl -s -L --user api:$TXTOKEN -X GET "$TX_API/projects" | jq '.[].slug')
+projects=$(curl -s -X GET "$TX_API3/projects?filter[organization]=o:hisp-uio" -H "Content: application/json" -H "Authorization: Bearer $TXTOKEN" | jq '.data[].attributes.slug')
 mkdir temp$$
 pushd temp$$
 
 for p in $projects; do
   # Get the name and the git url of the project
   # The git url is stored in the "homepage" attribute of the transifex project
-  curl -s -L --user api:$TXTOKEN -X GET "$TX_API/project/${p//\"/}?details" >/tmp/proj$$
+  curl -s -X GET "$TX_API3/projects/o:hisp-uio:p:${p//\"/}" -H "Content: application/json" -H "Authorization: Bearer $TXTOKEN" | jq '.[].attributes' >/tmp/proj$$
   name=$(cat /tmp/proj$$ | jq '.name')
-  tags=$(cat /tmp/proj$$ | jq '.tags')
-  giturl=$(cat /tmp/proj$$ | jq '.homepage')
+  tags=$(cat /tmp/proj$$ | jq '.tags | join(",")')
+  giturl=$(cat /tmp/proj$$ | jq '.homepage_url')
   cleanurl=${giturl//\"/}
   # trim the name of the repo from the full git url (everything after $GITHUB_BASE)
   gitslug=${cleanurl:${#GITHUB_BASE}}
@@ -111,7 +111,8 @@ for p in $projects; do
     # The branch names are at the beginnig of each resource slug, followed by double hyphen '--'
     # The `2.xx` branches appear as `2-xx` and must be converted back (replace hyphen with period)
     # We only want each branch to be listed once
-    branches=$(curl -s -L --user api:$TXTOKEN -X GET "$TX_API/project/${p//\"/}/resources" | jq '.[].slug | split("--")[0] | split("-") | join(".")' | uniq)
+    branches=$(curl -s -X GET "$TX_API3/resources?filter[project]=o:hisp-uio:p:${p//\"/}" -H "Content: application/json" -H "Authorization: Bearer $TXTOKEN" | jq '.data[].attributes.slug | split("--")[0] | split("-") | join(".")' | uniq)
+    # echo "Branches: $branches"
 
     # clone the project repository and go into it
     git clone --depth 1 --no-single-branch ${GITHUB_CLONE_BASE}${gitslug}
