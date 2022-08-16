@@ -223,7 +223,7 @@ for p in $projects; do
       git stash
 
       echo "Checking ${branch} branch for updated translations..."
-      #make_branch_pr $branch $tx_pull_mode
+      make_branch_pr $branch $tx_pull_mode
 
     done
 
