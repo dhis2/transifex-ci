@@ -21,7 +21,6 @@ jobs:
 
     - name: Run the script
       run: ./transyncosaurus_SINGLE.sh
-      shell: bash
       env:
         TXTOKEN: ${{ secrets.DHIS2_APPS_TX_TOKEN }}
         GITHUB_USER: ${{ secrets.DHIS2_GITHUB_USER }}
