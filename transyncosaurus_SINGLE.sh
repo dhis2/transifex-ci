@@ -2,11 +2,6 @@
 # Script to exchange translation files between repo and Transifex via Jenkins.
 # It relies on $TXTOKEN and $GHTOKEN being set as env vars for the given job
 
-# set up the python environment
-if [ ! -d "venv" ]; then
-    source setup_venv
-fi
-source ./venv/bin/activate
 
 # Ensure required tools are available
 for exe in "git" "hub" "tx" "jq" "iconv" "native2ascii"; do
