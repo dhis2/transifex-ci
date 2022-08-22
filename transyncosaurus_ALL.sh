@@ -200,8 +200,8 @@ for p in $projects; do
     pushd "$gitslug"
     git_setup
 
-    #temporarily add new release branches
-    branches=( ${branches[@]} "38.x" "v38" )
+    #temporarily add new release branches (left for reference, but this is buggy and results in the branch list appending for each project!)
+    # branches=( ${branches[@]} "38.x" "v38" )
 
     # loop over the branches
     for b in ${branches[@]}; do
