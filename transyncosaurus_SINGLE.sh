@@ -90,6 +90,8 @@ make_branch_pr() {
   # temporarily migrate configuration to the new format.
   tx migrate
   rm .tx/config*.bak
+  # temp remove invalid resource
+  sed -i '/^\[o:hisp-uio:p:app-server-side-resources:r:reporting-i18n-module-properties\]/,/^minimum_perc = 0/d' .tx/config
 
   # pull all transifex translations for that branch
   # only pull reviewed strings, ignoring resources with less than 10% translated
@@ -212,6 +214,8 @@ for p in $projects; do
 
       # temporarily migrate configuration to the new format.
       tx migrate
+      # temp remove invalid resource
+      sed -i '/^\[o:hisp-uio:p:app-server-side-resources:r:reporting-i18n-module-properties\]/,/^minimum_perc = 0/d' .tx/config
 
       # sync the current source files to transifex, for the current branch
       if [[ $PUSH_TRANSLATION_STRINGS == 1 ]]; then
