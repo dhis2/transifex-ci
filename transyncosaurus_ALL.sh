@@ -93,8 +93,8 @@ make_branch_pr() {
 
   # pull all transifex translations for that branch
   # only pull reviewed strings, ignoring resources with less than 10% translated
-  echo "tx pull --all --branch $branch --force --skip --minimum-perc=1 --mode $pull_mode"
-  tx pull --all --branch $branch --use-git-timestamps --skip --minimum-perc=1 --mode $pull_mode
+  echo "tx pull --all --branch $branch --use-git-timestamps --skip --minimum-perc=1 --mode $pull_mode --workers 4"
+  tx pull --all --branch $branch --use-git-timestamps --skip --minimum-perc=1 --mode $pull_mode --workers 4
 
   # ensure that the properties files have the correct encoding (escaped utf-8)
   for propfile in $(grep "file_filter.*properties" .tx/config | sed "s/.*= *// ; s/<lang>/*/")
