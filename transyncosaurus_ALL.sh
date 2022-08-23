@@ -237,6 +237,9 @@ for p in $projects; do
     popd
     # delete the repo clone
     rm -rf "$gitslug"
+    
+    # sleep for 20s between projects to avoid API throttling
+    sleep 20
 
   fi
 
