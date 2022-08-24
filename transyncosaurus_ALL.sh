@@ -15,20 +15,19 @@ done
 
 # Ensure ENV variables are set
 if [[ -z "$TXTOKEN" ]]; then
-   echo "TXTOKEN environment variable must be set."
-   exit 1
+  echo "TXTOKEN environment variable must be set."
+  exit 1
 fi
 if [[ -z "$GITHUB_USER" ]]; then
-   echo "GITHUB_USER environment variable must be set."
-   exit 1
+  echo "GITHUB_USER environment variable must be set."
+  exit 1
 fi
 if [[ -z "$GITHUB_PASSWORD" ]]; then
-   echo "GITHUB_PASSWORD environment variable must be set."
-   exit 1
+  echo "GITHUB_PASSWORD environment variable must be set."
+  exit 1
 fi
 
 # set -xv
-
 
 GITHUB_BASE="https://github.com/dhis2/"
 GITHUB_CLONE_BASE="https://${GITHUB_USER}:${GITHUB_PASSWORD}@github.com/dhis2/"
@@ -40,20 +39,45 @@ SYNC_FLAG="jenkins-app-sync"
 PUSH_TRANSLATION_STRINGS=1
 CREATE_PULL_REQUEST=1
 
-
 # --- functions
 tx_init() {
 
-if [[ ! -f ~/.transifexrc ]]
-then
+  if [[ ! -f ~/.transifexrc ]]; then
 
-  echo "[https://www.transifex.com]
+    echo "[https://www.transifex.com]
 api_hostname = https://api.transifex.com
 hostname = https://www.transifex.com
 username = api
 password = $TXTOKEN" > ~/.transifexrc
 
-fi
+  fi
+
+}
+
+tx_fix() {
+
+  txconf=".tx/config"
+
+  # Temp - update the tx config mapping and remove any unmapped Uzbek files
+  find . -name "*uz@*.po" -exec rm {} ';'
+  find . -name "*uz@*.properties" -exec rm {} ';'
+  sed -i 's/^lang_map.*/lang_map = fa_AF: prs, uz@Cyrl: uz, uz@Latn: uz_Latn/' $txconf
+
+  # temporarily migrate configuration to the new format.
+  tx migrate
+  rm .tx/config*.bak
+
+  # remove any invalid resources
+  tmpfile=$(mktemp)
+  cp $txconf "$tmpfile"
+  for f in $(cat $tmpfile | grep source_file | awk {'print $3'}); do
+
+    if [[ ! -f $f ]]; then
+      echo "Translation source $f not found. Removing record from transifex config!"
+      grep -n $f $tmpfile | awk -F: 'NR==FNR{f=$1}NR<f-1||NR>f+4' - $tmpfile > $txconf
+    fi
+  done
+  rm "$tmpfile"
 
 }
 
@@ -83,13 +107,14 @@ make_branch_pr() {
     git rebase $branch
   fi
 
-  # Temp - update the tx config mapping and remove any unmapped Uzbek files
-  find . -name "*uz@*.p[or]*" -exec rm {} ';'
-  sed -i 's/^lang_map.*/lang_map = fa_AF: prs, uz@Cyrl: uz, uz@Latn: uz_Latn/' .tx/config
+  # # Temp - update the tx config mapping and remove any unmapped Uzbek files
+  # find . -name "*uz@*.p[or]*" -exec rm {} ';'
+  # sed -i 's/^lang_map.*/lang_map = fa_AF: prs, uz@Cyrl: uz, uz@Latn: uz_Latn/' .tx/config
 
-  # temporarily migrate configuration to the new format.
-  tx migrate
-  rm .tx/config*.bak
+  # # temporarily migrate configuration to the new format.
+  # tx migrate
+  # rm .tx/config*.bak
+  tx_fix
 
   # pull all transifex translations for that branch
   # only pull reviewed strings, ignoring resources with less than 10% translated
@@ -97,8 +122,7 @@ make_branch_pr() {
   tx pull --all --branch $branch --use-git-timestamps --skip --minimum-perc=1 --mode $pull_mode --workers 4
 
   # ensure that the properties files have the correct encoding (escaped utf-8)
-  for propfile in $(grep "file_filter.*properties" .tx/config | sed "s/.*= *// ; s/<lang>/*/")
-  do
+  for propfile in $(grep "file_filter.*properties" .tx/config | sed "s/.*= *// ; s/<lang>/*/"); do
     # set encoding
     iconv -f iso-8859-1 -t utf-8 ${propfile} -o ${propfile}.tmp
     # escape characters
@@ -116,7 +140,7 @@ make_branch_pr() {
       git checkout -b ${sync_branch}
     fi
 
-# set -xv
+    # set -xv
     commit_detail=/tmp/commit_message_$$.md
     echo -e "fix(translations): sync translations from transifex ($branch)\n" >${commit_detail}
     diff_added=$(git diff --stat | tail -1 | awk '{print $4}')
@@ -126,7 +150,7 @@ make_branch_pr() {
       echo -e "Please check carefully before merging!\n" >>${commit_detail}
     fi
 
-# unset -xv
+    # unset -xv
 
     # commit back to git
     git add .
@@ -151,8 +175,6 @@ make_branch_pr() {
 
   fi
 }
-
-
 
 # --- starting point
 tx_init
@@ -213,22 +235,20 @@ for p in $projects; do
 
       if [[ $status == 0 ]]; then
 
-      # temporarily migrate configuration to the new format.
-      tx migrate
+        # fix issues with tx config
+        tx_fix
 
+        # sync the current source files to transifex, for the current branch
+        if [[ $PUSH_TRANSLATION_STRINGS == 1 ]]; then
+          echo "pushing to transifex: tx push -source --branch $branch --skip"
+          tx push --source --branch $branch --use-git-timestamps --skip
+        fi
 
-          # sync the current source files to transifex, for the current branch
-          if [[ $PUSH_TRANSLATION_STRINGS == 1 ]]; then
-            echo "pushing to transifex: tx push -source --branch $branch --skip"
-            tx push --source --branch $branch --use-git-timestamps --skip
-          fi
+        # undo any changes caused by the migration on this branch
+        git stash
 
-          # undo any changes caused by the migration on this branch
-          git stash
-
-
-          echo "Checking ${branch} branch for updated translations..."
-          make_branch_pr $branch $tx_pull_mode
+        echo "Checking ${branch} branch for updated translations..."
+        make_branch_pr $branch $tx_pull_mode
       fi
 
     done
