@@ -58,26 +58,32 @@ tx_fix() {
 
   txconf=".tx/config"
 
-  # Temp - update the tx config mapping and remove any unmapped Uzbek files
-  find . -name "*uz@*.po" -exec rm {} ';'
-  find . -name "*uz@*.properties" -exec rm {} ';'
-  sed -i 's/^lang_map.*/lang_map = fa_AF: prs, uz@Cyrl: uz, uz@Latn: uz_Latn/' $txconf
-
   # temporarily migrate configuration to the new format.
   tx migrate
   rm .tx/config*.bak
 
-  # remove any invalid resources
-  tmpfile=$(mktemp)
-  cp $txconf "$tmpfile"
-  for f in $(cat $tmpfile | grep source_file | awk {'print $3'}); do
+  if [[ $(git config --get remote.origin.url) != *"android"* ]]; then
+    
+    # Temp - update the tx config mapping and remove any unmapped Uzbek files
+    find . -name "*uz@*.po" -exec rm {} ';'
+    find . -name "*uz@*.properties" -exec rm {} ';'
+    sed -i 's/^lang_map.*/lang_map = fa_AF: prs, uz@Cyrl: uz, uz@Latn: uz_Latn/' $txconf
 
-    if [[ ! -f $f ]]; then
-      echo "Translation source $f not found. Removing record from transifex config!"
-      grep -n $f $tmpfile | awk -F: 'NR==FNR{f=$1}NR<f-1||NR>f+4' - $tmpfile > $txconf
-    fi
-  done
-  rm "$tmpfile"
+    # remove any invalid resources
+    tmpfile=$(mktemp)
+    cp $txconf "$tmpfile"
+    for f in $(cat $tmpfile | grep source_file | awk {'print $3'}); do
+
+      if [[ ! -f $f ]]; then
+        echo "Translation source $f not found. Removing record from transifex config!"
+        grep -n $f $tmpfile | awk -F: 'NR==FNR{f=$1}NR<f-1||NR>f+4' - $tmpfile > $txconf
+      fi
+    done
+    rm "$tmpfile"
+
+  fi
+
+
 
 }
 

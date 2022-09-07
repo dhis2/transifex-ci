@@ -57,6 +57,37 @@ fi
 
 }
 
+tx_fix() {
+
+  txconf=".tx/config"
+
+  # temporarily migrate configuration to the new format.
+  tx migrate
+  rm .tx/config*.bak
+
+  if [[ $(git config --get remote.origin.url) != *"android"* ]]; then
+
+    # Temp - update the tx config mapping and remove any unmapped Uzbek files
+    find . -name "*uz@*.po" -exec rm {} ';'
+    find . -name "*uz@*.properties" -exec rm {} ';'
+    sed -i 's/^lang_map.*/lang_map = fa_AF: prs, uz@Cyrl: uz, uz@Latn: uz_Latn/' $txconf
+
+    # remove any invalid resources
+    tmpfile=$(mktemp)
+    cp $txconf "$tmpfile"
+    for f in $(cat $tmpfile | grep source_file | awk {'print $3'}); do
+
+      if [[ ! -f $f ]]; then
+        echo "Translation source $f not found. Removing record from transifex config!"
+        grep -n $f $tmpfile | awk -F: 'NR==FNR{f=$1}NR<f-1||NR>f+4' - $tmpfile > $txconf
+      fi
+    done
+    rm "$tmpfile"
+
+  fi
+
+}
+
 git_setup() {
   git config user.email "apps@dhis2.org"
   git config user.name "dhis2-bot"
@@ -83,15 +114,7 @@ make_branch_pr() {
     git rebase $branch
   fi
 
-  # Temp - update the tx config mapping and remove any unmapped Uzbek files
-  find . -name "*uz@*.p[or]*" -exec rm {} ';'
-  sed -i 's/^lang_map.*/lang_map = fa_AF: prs, uz@Cyrl: uz, uz@Latn: uz_Latn/' .tx/config
-
-  # temporarily migrate configuration to the new format.
-  tx migrate
-  rm .tx/config*.bak
-  # temp remove invalid resource
-  sed -i '/^\[o:hisp-uio:p:app-server-side-resources:r:reporting-i18n-module-properties\]/,/^minimum_perc = 0/d' .tx/config
+  tx_fix
 
   # pull all transifex translations for that branch
   # only pull reviewed strings, ignoring resources with less than 10% translated
@@ -213,9 +236,7 @@ for p in $projects; do
       git checkout $branch
 
       # temporarily migrate configuration to the new format.
-      tx migrate
-      # temp remove invalid resource
-      sed -i '/^\[o:hisp-uio:p:app-server-side-resources:r:reporting-i18n-module-properties\]/,/^minimum_perc = 0/d' .tx/config
+      tx_fix
 
       # sync the current source files to transifex, for the current branch
       if [[ $PUSH_TRANSLATION_STRINGS == 1 ]]; then
