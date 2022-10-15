@@ -70,16 +70,33 @@ tx_fix() {
     sed -i 's/^lang_map.*/lang_map = fa_AF: prs, uz@Cyrl: uz, uz@Latn: uz_Latn/' $txconf
 
     # remove any invalid resources
-    tmpfile=$(mktemp)
-    cp $txconf "$tmpfile"
-    for f in $(cat $tmpfile | grep source_file | awk {'print $3'}); do
-
+    for f in $(cat $txconf | grep source_file | awk {'print $3'}); do
       if [[ ! -f $f ]]; then
+
+        tmpfile=$(mktemp)
         echo "Translation source $f not found. Removing record from transifex config!"
-        # grep -n $f $tmpfile | awk -F: 'NR==FNR{f=$1}NR<f-1||NR>f+4' - $tmpfile > $txconf
+        new=""
+        while read line; do
+          if [[ ${line::1} == "[" ]];then
+            if [[ ! $new =~ "$f" ]];then
+              if [[ $new != "" ]];then
+                echo -e $new >> $tmpfile
+              fi
+            fi
+            new=""
+          fi
+          new+="$line\n"
+        done <$txconf
+        if [[ ! $new =~ "$f" ]];then
+          if [[ $new != "" ]];then
+            echo -e $new >> $tmpfile
+          fi
+        fi
+        cp "$tmpfile" $txconf
+
+        rm "$tmpfile"
       fi
     done
-    rm "$tmpfile"
 
   fi
 
