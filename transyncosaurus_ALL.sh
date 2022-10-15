@@ -76,7 +76,7 @@ tx_fix() {
 
       if [[ ! -f $f ]]; then
         echo "Translation source $f not found. Removing record from transifex config!"
-        grep -n $f $tmpfile | awk -F: 'NR==FNR{f=$1}NR<f-1||NR>f+4' - $tmpfile > $txconf
+        # grep -n $f $tmpfile | awk -F: 'NR==FNR{f=$1}NR<f-1||NR>f+4' - $tmpfile > $txconf
       fi
     done
     rm "$tmpfile"
