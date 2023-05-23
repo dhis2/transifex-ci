@@ -101,7 +101,7 @@ EOF
                   res=$(hub pr close ${pr_id})
                   echo "Close deprecated PR. Result: $res"
               fi
-
+            fi
 
             rm "$body"
             sleep 1
