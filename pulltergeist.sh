@@ -80,7 +80,7 @@ EOF
             # if the CI status is a failure, close the PR (A new one will be opened with changes during the next sync)
             if [[ "${ci_status}" == "failure" ]]
             then
-                res=$(hub pr close ${pr_id})
+                res=$(gh pr close ${pr_id})
                 echo "Close failed PR. Result: $res"
             fi
 
