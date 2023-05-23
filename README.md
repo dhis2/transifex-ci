@@ -17,8 +17,7 @@ The script also relies on the following being set as env vars:
 
 - $TXTOKEN : API token for transifex
 - $GITHUB_USER : guthub user name
-- $GITHUB_PASSWORD : guthub password
-- $GITHUB_TOKEN : Access token for guthub (not 100% sure we need this!)
+- $GITHUB_PASSWORD : access token for guthub
 
 ## Scripts
 
