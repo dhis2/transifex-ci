@@ -27,4 +27,4 @@ jobs:
       env:
         TXTOKEN: ${{ secrets.DHIS2_APPS_TX_TOKEN }}
         GITHUB_USER: ${{ secrets.DHIS2_GITHUB_USER }}
-        GITHUB_PASSWORD: ${{ secrets.DHIS2_GITHUB_PASSWORD }}
+        GITHUB_PASSWORD: ${{ secrets.DHIS2_BOT_GITHUB_TOKEN }}
