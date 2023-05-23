@@ -4,7 +4,7 @@
 
 
 # Ensure required tools are available
-for exe in "git" "hub" "jq"; do
+for exe in "git" "hub" "jq" "gh"; do
   if [[ ! $(command -v $exe) ]]; then
     echo "This script requires $exe. Exiting"
     exit 1
@@ -155,7 +155,7 @@ for p in $projects; do
         then
             p=$(grep "$g" OPEN_PRS)
             pr_id=${g/*PR#/}
-            res=$(hub pr close ${pr_id})
+            res=$(gh pr close ${pr_id} -c "deprecated version")
             echo "Close deprecated PR $pr_id. Result: $res"
             git push -d origin $g
         else
