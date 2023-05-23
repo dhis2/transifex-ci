@@ -83,25 +83,6 @@ EOF
                 res=$(hub pr close ${pr_id})
                 echo "Close failed PR. Result: $res"
             fi
-            # if the CI status is open, check if the version is deprecated, and close if it is
-            if [[ "${ci_status}" == "open" ]]
-            then
-              deprecated_versions=("v29" "v30" "v31" "v32" "v33" "v34")
-              deprecated=false
-
-              for value in "${deprecated_versions[@]}"; do
-                  if [[ ${pr_title} == *"${value}"* ]]; then
-                      deprecated=true
-                      break
-                  fi
-              done
-
-              if $deprecated
-              then
-                  res=$(hub pr close ${pr_id})
-                  echo "Close deprecated PR. Result: $res"
-              fi
-            fi
 
             rm "$body"
             sleep 1
@@ -154,12 +135,32 @@ for p in $projects; do
     
     # delete all transifex branches except for unmerged PRs
     echo "Clean up merged transifex-ALL branches..."
-    hub pr list --format='%H%n' > OPEN_PRS
+    hub pr list --format='%H PR#%I%n' > OPEN_PRS
     for g in $(git branch -r | grep 'transifex-ALL' | sed 's/origin\///')
     do 
       if grep -q "$g" OPEN_PRS
       then
-        echo "  Skipping open PR: $g"
+        # remove any deprecated open PRs
+        deprecated_versions=("v29" "v30" "v31" "v32" "v33" "v34")
+        deprecated=false
+
+        for value in "${deprecated_versions[@]}"; do
+            if [[ ${g} == *"${value}"* ]]; then
+                deprecated=true
+                break
+            fi
+        done
+
+        if $deprecated
+        then
+            p=$(grep "$g" OPEN_PRS)
+            pr_id=${g/*PR#/}
+            res=$(hub pr close ${pr_id})
+            echo "Close deprecated PR $pr_id. Result: $res"
+            git push -d origin $g
+        else
+            echo "  Skipping open PR: $g"
+        fi
       else
         git push -d origin $g
       fi
