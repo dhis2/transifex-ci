@@ -83,6 +83,24 @@ EOF
                 res=$(hub pr close ${pr_id})
                 echo "Close failed PR. Result: $res"
             fi
+            # if the CI status is open, check if the version is deprecated, and close if it is
+            if [[ "${ci_status}" == "open" ]]
+            then
+              deprecated_versions=("v29" "v30" "v31" "v32" "v33" "v34")
+              deprecated=false
+
+              for value in "${deprecated_versions[@]}"; do
+                  if [[ ${pr_title} == *"${value}"* ]]; then
+                      deprecated=true
+                      break
+                  fi
+              done
+
+              if $deprecated
+              then
+                  res=$(hub pr close ${pr_id})
+                  echo "Close deprecated PR. Result: $res"
+              fi
 
 
             rm "$body"
