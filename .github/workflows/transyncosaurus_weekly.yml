@@ -1,4 +1,4 @@
-name: Transifex App Sync
+name: Transifex App Sync - Weekly
 
 on:
   schedule:
