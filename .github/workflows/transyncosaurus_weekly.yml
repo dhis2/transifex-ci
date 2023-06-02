@@ -3,36 +3,14 @@ name: Transifex App Sync
 on:
   schedule:
     # * is a special character in YAML so you have to quote this string
-    - cron:  '11 23 * * *'
+    - cron:  '41 22 * * 6'
   workflow_dispatch:
 
 jobs:
-  langsync:
-    name: Synchronise UI languages in transifex
-    runs-on: ubuntu-20.04
-
-    steps:
-    - uses: actions/checkout@v3
-    - name: Set up Python 3.8
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.8'
-        
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install requests
-        pip install https://github.com/Philip-Larsen-Donnelly/translayer/archive/refs/tags/v0.0.7.zip
-
-    - name: Run the script
-      run: python ./ui_language_spreader.py
-      env:
-        TX_TOKEN: ${{ secrets.DHIS2_APPS_TX_TOKEN }}
 
   build:
     name: Synchronise translations
     runs-on: ubuntu-20.04
-    needs: langsync
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python 3.8
@@ -51,4 +29,4 @@ jobs:
         TXTOKEN: ${{ secrets.DHIS2_APPS_TX_TOKEN }}
         GITHUB_USER: ${{ secrets.DHIS2_GITHUB_USER }}
         GITHUB_PASSWORD: ${{ secrets.DHIS2_BOT_GITHUB_TOKEN }}
-        TRANSIFEX_SYNC_TAG: jenkins-app-sync
+        TRANSIFEX_SYNC_TAG: jenkins-weekly-app-sync
