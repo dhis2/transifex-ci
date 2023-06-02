@@ -33,7 +33,15 @@ GITHUB_BASE="https://github.com/dhis2/"
 GITHUB_CLONE_BASE="https://${GITHUB_USER}:${GITHUB_PASSWORD}@github.com/dhis2/"
 SYNC_DATE=$(date +"%Y%m%d_%H%M%S")
 TX_API3=https://rest.api.transifex.com
-SYNC_FLAG="jenkins-app-sync"
+
+# Check if the environment variable is set for sync flag
+if [ -n "$TRANSIFEX_SYNC_TAG" ]; then
+    # Use the value of the environment variable
+    SYNC_FLAG="$TRANSIFEX_SYNC_TAG"
+else
+    # Use the default value
+    SYNC_FLAG="jenkins-app-sync"
+fi
 
 # --- options : set the following to `0` to test without pushing anything to remote systems
 PUSH_TRANSLATION_STRINGS=1
