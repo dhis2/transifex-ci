@@ -20,7 +20,7 @@ jobs:
       shell: bash
 
     - name: install hub
-      run: 
+      run: |
         hub_version="2.14.2"
         hub_filename="hub-linux-amd64-${hub_version}"
         downloadUrl="https://github.com/mislav/hub/releases/download/v${hub_version}/${hub_filename}.tgz"
