@@ -24,6 +24,17 @@ jobs:
         pip install requests
         pip install https://github.com/Philip-Larsen-Donnelly/translayer/archive/refs/tags/v0.0.7.zip
 
+    - name: install hub
+      run: |
+        hub_version="2.14.2"
+        hub_filename="hub-linux-amd64-${hub_version}"
+        downloadUrl="https://github.com/mislav/hub/releases/download/v${hub_version}/${hub_filename}.tgz"
+        curl -fsSL ${downloadUrl} -o /tmp/${hub_filename}.tgz
+        tar xzf /tmp/${hub_filename}.tgz -C /tmp/
+        sudo mv /tmp/${hub_filename}/bin/hub /usr/local/bin
+        hub --version
+      shell: bash
+
     - name: Run the script
       run: python ./ui_language_spreader.py
       env:
