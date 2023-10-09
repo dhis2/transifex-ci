@@ -141,13 +141,8 @@ make_branch_pr() {
   fi
 
   # # Temp - update the tx config mapping and remove any unmapped Uzbek files
-  # find . -name "*uz@*.p[or]*" -exec rm {} ';'
-  # sed -i 's/^lang_map.*/lang_map = fa_AF: prs, uz@Cyrl: uz, uz@Latn: uz_Latn/' .tx/config
-
   # # temporarily migrate configuration to the new format.
-  # tx migrate
-  # rm .tx/config*.bak
-  tx_fix
+  # tx_fix
 
   # pull all transifex translations for that branch
   # only pull reviewed strings, ignoring resources with less than 10% translated
@@ -249,7 +244,7 @@ for p in $projects; do
     # We only want each branch to be listed once
     branches=$(curl -s -X GET "$TX_API3/resources?filter[project]=o:hisp-uio:p:${p//\"/}" -H "Content: application/json" -H "Authorization: Bearer $TXTOKEN" | jq '.data[].attributes.slug | split("--")[0] | split("-") | join(".")' | uniq)
     #temporarily add new release branches
-    branches+=("v40")
+    # branches+=("v40")
     # echo "Branches: $branches"
 
     # clone the project repository and go into it
