@@ -5,6 +5,10 @@
 # set path to pick up tx
 export PATH="$PWD:$PATH"
 
+# create an array of deprecated branches that should be skipped
+declare -a deprecated_branches=("2.29" "2.30" "2.31" "2.32" "2.33" "2.34" "v29" "v30" "v31" "v32" "v33" "v34")
+
+
 # Ensure required tools are available
 for exe in "git" "hub" "tx" "jq" "iconv" "native2ascii"; do
   if [[ ! $(command -v $exe) ]]; then
@@ -255,8 +259,24 @@ for p in $projects; do
     #temporarily add new release branches (left for reference, but this is buggy and results in the branch list appending for each project!)
     # branches=( ${branches[@]} "38.x" "v38" )
 
+    # create a new array for non-deprecated branches
+    declare -a active_branches=()
+    # loop over the branches and add non-deprecated ones to active_branches
+    for branch in "${branches[@]}"; do
+        skip=false
+        for deprecated_branch in "${deprecated_branches[@]}"; do
+            if [[ $branch == $deprecated_branch ]]; then
+                skip=true
+                break
+            fi
+        done
+        if [[ $skip == false ]]; then
+            active_branches+=("$branch")
+        fi
+    done
+
     # loop over the branches
-    for b in ${branches[@]}; do
+    for b in ${active_branches[@]}; do
       branch=${b//\"/}
 
       # checkout the branch
