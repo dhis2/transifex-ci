@@ -47,6 +47,9 @@ fi
 PUSH_TRANSLATION_STRINGS=1
 CREATE_PULL_REQUEST=1
 
+# --- ignore older version branches until we clean them up
+IGNORE_BRANCHES="v29 2.29 v30 2.30 v31 2.31 v32 32.x 2.32 v33 33.x 2.33 v34 34.x 2.34"
+
 # --- functions
 tx_init() {
 
@@ -244,7 +247,7 @@ for p in $projects; do
     # We only want each branch to be listed once
     branches=$(curl -s -X GET "$TX_API3/resources?filter[project]=o:hisp-uio:p:${p//\"/}" -H "Content: application/json" -H "Authorization: Bearer $TXTOKEN" | jq '.data[].attributes.slug | split("--")[0] | split("-") | join(".")' | uniq)
     #temporarily add new release branches
-    branches+=("2.40")
+    #branches+=("2.40")
     # echo "Branches: $branches"
 
     # clone the project repository and go into it
@@ -258,6 +261,11 @@ for p in $projects; do
     # loop over the branches
     for b in ${branches[@]}; do
       branch=${b//\"/}
+      # check if branch is in the list of branches to ignore
+      if [[ " ${IGNORE_BRANCHES[@]} " =~ " ${branch} " ]]; then
+          echo "Ignoring deprecated branch: $branch"
+          continue
+      fi
 
       # checkout the branch
       git checkout $branch
