@@ -38,6 +38,8 @@ MERGE_FLAG="jenkins-pr-automerge"
 PUSH_TRANSLATION_STRINGS=1
 CREATE_PULL_REQUEST=1
 
+# exception list for repos that should not have their PRs closed automatically
+CLOSE_EXCEPTIONS=("data-visualizer-app" "line-listing-app" "dashboard-app" "maps-app")
 
 # --- functions
 git_setup() {
@@ -77,13 +79,26 @@ EOF
                 res=$(hub api --method PUT "repos/{owner}/{repo}/pulls/${pr_id}/merge" --input "$body")
                 echo "Merge PR. Result: $res"
             fi
-            # if the CI status is a failure, close the PR (A new one will be opened with changes during the next sync)
-            if [[ "${ci_status}" == "failure" ]]
-            then
-                res=$(gh pr close ${pr_id})
-                echo "Close failed PR. Result: $res"
-            fi
 
+            # check the repo name against the exceptions list
+            repo="$(basename `git rev-parse --show-toplevel`)"
+            # if the repo is in the exceptions list, skip closing the PR
+            close_failed_PR=true
+            for value in "${CLOSE_EXCEPTIONS[@]}"; do
+                if [[ ${repo} == "${value}" ]]; then
+                    close_failed_PR=false
+                    break
+                fi
+            done
+            if $close_failed_PR
+            then
+              # if the CI status is a failure, close the PR (A new one will be opened with changes during the next sync)
+              if [[ "${ci_status}" == "failure" ]]
+              then
+                  res=$(gh pr close ${pr_id})
+                  echo "Close failed PR. Result: $res"
+              fi
+            fi
             rm "$body"
             sleep 1
         fi
