@@ -48,7 +48,7 @@ PUSH_TRANSLATION_STRINGS=1
 CREATE_PULL_REQUEST=1
 
 # --- ignore older version branches until we clean them up
-IGNORE_BRANCHES="v29 2.29 v30 2.30 v31 2.31 v32 32.x 2.32 v33 33.x 2.33 v34 34.x 2.34"
+IGNORE_BRANCHES="v29 2.29 v30 2.30 v31 2.31 v32 32.x 2.32 v33 33.x 2.33 v34 34.x 2.34 v35 35.x 2.35"
 
 # --- functions
 tx_init() {
