@@ -224,6 +224,11 @@ for p in $projects; do
   # trim the name of the repo from the full git url (everything after $GITHUB_BASE)
   gitslug=${cleanurl:${#GITHUB_BASE}}
   rm /tmp/proj$$
+  
+  # Debug output to show project details
+  echo "Checking project: $name"
+  echo "    Tags: $tags"
+  echo "    SYNC_FLAG: ${SYNC_FLAG}"
 
   # Loop through all APP projects
   if [[ $tags == *"${SYNC_FLAG}"* ]]; then
