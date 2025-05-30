@@ -236,9 +236,9 @@ for p in $projects; do
     echo "Syncing $name : $giturl : $gitslug"
 
     tx_pull_mode="default"
-    if [[ $gitslug == "dhis2-android-capture-app" ]]; then
-      tx_pull_mode="reviewed"
-    fi
+    #if [[ $gitslug == "dhis2-android-capture-app" ]]; then
+    #  tx_pull_mode="reviewed"
+    #fi
     # The supported modes are:
     #   developer: The files downloaded will be compatible with the i18n support of the development framework you’re using. This is the default mode when you run tx pull. Use this mode when you intend to use the file e.g. in production. This mode auto-fills empty translations with the source language text for most of the file formats we support, which is critical in the case of file formats that require all translations to be non-empty.
     #   translator: The files will be suitable for offline translation. Equivalent to the web app's option "Download file to translate" (for_translation).
