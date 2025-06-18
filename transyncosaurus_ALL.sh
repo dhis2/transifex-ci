@@ -76,11 +76,11 @@ tx_fix() {
   if [[ $(git config --get remote.origin.url) != *"android"* ]]; then
     
     # Temp - update the tx config mapping and remove any unmapped Uzbek files
-    find . -name "*uz.po" -exec rm {} ';'
-    find . -name "*_uz.properties" -exec rm {} ';'
-    find . -name "*_uz_Cyrl.properties" -exec rm {} ';'
-    find . -name "*_uz_Latn.properties" -exec rm {} ';'
-    sed -i 's/^lang_map.*/lang_map = fa_AF: prs, uz@Cyrl: uz_UZ_Cyrl, uz@Latn: uz_UZ_Latn/' $txconf
+    # find . -name "*uz.po" -exec rm {} ';'
+    # find . -name "*_uz.properties" -exec rm {} ';'
+    # find . -name "*_uz_Cyrl.properties" -exec rm {} ';'
+    # find . -name "*_uz_Latn.properties" -exec rm {} ';'
+    # sed -i 's/^lang_map.*/lang_map = fa_AF: prs, uz@Cyrl: uz_UZ_Cyrl, uz@Latn: uz_UZ_Latn/' $txconf
 
     # remove any invalid resources
     for f in $(cat $txconf | grep source_file | awk {'print $3'}); do
