@@ -32,6 +32,10 @@ jobs:
         hub --version
       shell: bash
 
+    - name: Ensure pulltergeist.sh is executable
+      run: chmod +x ./pulltergeist.sh
+      shell: bash
+
     - name: Run the script
       run: ./pulltergeist.sh
       shell: bash
