@@ -189,13 +189,21 @@ for p in $projects; do
             pr_id=${g/*PR#/}
             res=$(gh pr close ${pr_id} -c "deprecated version")
             echo "Close deprecated PR $pr_id. Result: $res"
-            git push -d origin $g
+            if git ls-remote --exit-code origin "refs/heads/$g" >/dev/null 2>&1; then
+              git push -d origin "$g" || log "Warning: failed to delete remote branch $g (may already be gone)"
+            else
+              log "Remote branch $g already absent, skipping delete"
+            fi
         else
             echo "  Skipping open PR: $g"
         fi
       else
         log "Deleting remote branch $g"
-        git push -d origin $g
+        if git ls-remote --exit-code origin "refs/heads/$g" >/dev/null 2>&1; then
+          git push -d origin "$g" || log "Warning: failed to delete remote branch $g (may already be gone)"
+        else
+          log "Remote branch $g already absent, skipping delete"
+        fi
       fi
     done
     rm -f OPEN_PRS
