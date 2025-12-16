@@ -88,8 +88,13 @@ EOF
             if [[ "${ci_status}" == "success" ]]
             then
                 log "Attempting merge of PR ${pr_id}"
-                res=$(hub api --method PUT "repos/{owner}/{repo}/pulls/${pr_id}/merge" --input "$body")
-                echo "Merge PR. Result: $res"
+                merge_output=$(hub api --method PUT "repos/{owner}/{repo}/pulls/${pr_id}/merge" --input "$body" 2>&1)
+                merge_status=$?
+                if [[ $merge_status -ne 0 ]]; then
+                    log "Merge failed for PR ${pr_id}. Status=$merge_status Output: ${merge_output}"
+                    continue
+                fi
+                echo "Merge PR. Result: ${merge_output}"
             fi
 
             # check the repo name against the exceptions list
