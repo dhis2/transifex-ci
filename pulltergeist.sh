@@ -129,7 +129,7 @@ for p in $projects; do
   # Get the name and the git url of the project
   # The git url is stored in the "homepage" attribute of the transifex project
   log "Fetching project details for ${p//\"/}"
-  curl -fSs -X GET "$TX_API3/projects/o:hisp-uio:p:${p//\"/}" -H "Content: application/json" -H "Authorization: Bearer $TXTOKEN" | jq '.[].attributes' >/tmp/proj$$
+  curl -fSs -X GET "$TX_API3/projects/o%3Ahisp-uio%3Ap%3A${p//\"/}" -H "Content: application/json" -H "Authorization: Bearer $TXTOKEN" | jq '.[].attributes' >/tmp/proj$$
   name=$(cat /tmp/proj$$ | jq '.name')
   tags=$(cat /tmp/proj$$ | jq '.tags | join(",")')
   giturl=$(cat /tmp/proj$$ | jq '.homepage_url')
@@ -147,7 +147,7 @@ for p in $projects; do
     # The branch names are at the beginnig of each resource slug, followed by double hyphen '--'
     # The `2.xx` branches appear as `2-xx` and must be converted back (replace hyphen with period)
     # We only want each branch to be listed once
-    branches=$(curl -fSs -X GET "$TX_API3/resources?filter[project]=o:hisp-uio:p:${p//\"/}" -H "Content: application/json" -H "Authorization: Bearer $TXTOKEN" | jq '.data[].attributes.slug | split("--")[0] | split("-") | join(".")' | uniq)
+    branches=$(curl -fSs -X GET "$TX_API3/resources?filter%5Bproject%5D=o%3Ahisp-uio%3Ap%3A${p//\"/}" -H "Content: application/json" -H "Authorization: Bearer $TXTOKEN" | jq '.data[].attributes.slug | split("--")[0] | split("-") | join(".")' | uniq)
     log "Branches discovered: $(echo "$branches" | tr '\n' ' ')"
 
     # clone the project repository and go into it
