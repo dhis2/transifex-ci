@@ -120,7 +120,7 @@ EOF
 
 # --- starting point
 log "Fetching project list from Transifex"
-projects=$(curl -fSs -X GET "$TX_API3/projects?filter[organization]=o:hisp-uio" -H "Content: application/json" -H "Authorization: Bearer $TXTOKEN" | jq '.data[].attributes.slug')
+projects=$(curl -s -X GET "$TX_API3/projects?filter%5Borganization%5D=o%3Ahisp-uio" -H "Content: application/json" -H "Authorization: Bearer $TXTOKEN" | jq '.data[].attributes.slug')
 log "Projects returned: $(echo "$projects" | wc -l)"
 mkdir temp$$
 pushd temp$$
