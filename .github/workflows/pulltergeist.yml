@@ -44,3 +44,5 @@ jobs:
         GITHUB_USER: ${{ secrets.DHIS2_GITHUB_USER }}
         GITHUB_PASSWORD: ${{ secrets.DHIS2_BOT_GITHUB_TOKEN }}
         GH_TOKEN: ${{ secrets.DHIS2_BOT_GITHUB_TOKEN }}
+        DEBUG: 1
+
