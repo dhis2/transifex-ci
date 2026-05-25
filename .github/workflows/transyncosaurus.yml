@@ -55,7 +55,26 @@ jobs:
         sudo mv /tmp/${hub_filename}/bin/hub /usr/local/bin
         hub --version
       shell: bash
-      
+
+    - name: Configure signed commits
+      env:
+        BOT_SSH_SIGNING_KEY: ${{ secrets.DHIS2_BOT_SSH_SIGNING_KEY }}
+      run: |
+        if [[ -z "$BOT_SSH_SIGNING_KEY" ]]; then
+          echo "::error::Secret DHIS2_BOT_SSH_SIGNING_KEY is not set. See README 'Bot commit signing' section."
+          exit 1
+        fi
+        mkdir -p ~/.ssh && chmod 700 ~/.ssh
+        printf '%s\n' "$BOT_SSH_SIGNING_KEY" > ~/.ssh/signing_key
+        chmod 600 ~/.ssh/signing_key
+        ssh-keygen -y -f ~/.ssh/signing_key > ~/.ssh/signing_key.pub
+        git config --global user.name "dhis2-bot"
+        git config --global user.email "apps@dhis2.org"
+        git config --global gpg.format ssh
+        git config --global user.signingkey ~/.ssh/signing_key.pub
+        git config --global commit.gpgsign true
+      shell: bash
+
     - name: Run the script
       run: ./transyncosaurus_ALL.sh
       shell: bash

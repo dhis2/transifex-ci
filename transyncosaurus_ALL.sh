@@ -184,8 +184,11 @@ make_branch_pr() {
     # unset -xv
 
     # commit back to git
+    # The commit is DCO-signed-off (--signoff) and GPG/SSH-signed if the workflow
+    # has configured a signing key (via commit.gpgsign=true in git config).
+    # Without signing, the resulting PRs fail dhis2-core's branch-protection checks.
     git add .
-    git commit -F ${commit_detail}
+    git commit --signoff -F ${commit_detail}
 
     # raise a PR on github (using hub command)
     if [[ $CREATE_PULL_REQUEST == 1 ]]; then

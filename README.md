@@ -47,3 +47,40 @@ This is a bash script that performs the following:
   - Loops over all branches that have resources in the project.
     - Merges any translation PRs on that branch
 
+## Bot commit signing
+
+`dhis2-core` (and likely other target repos) require **signed commits with a DCO sign-off** on every commit before a PR is mergeable. Without both, the auto-generated sync PRs sit blocked indefinitely and have to be manually amended.
+
+The `transyncosaurus_ALL.sh` script calls `git commit --signoff` (DCO). For the cryptographic signature, the workflow imports an SSH signing key from a repository secret and configures git to sign every commit.
+
+### One-time setup (requires admin on the `dhis2-bot` GitHub account and on this repo)
+
+1. **Generate an ed25519 SSH key for signing** on a trusted local machine:
+
+   ```bash
+   ssh-keygen -t ed25519 -C "dhis2-bot signing key" -f dhis2-bot-signing -N ""
+   ```
+
+   That produces `dhis2-bot-signing` (private) and `dhis2-bot-signing.pub` (public).
+
+2. **Add the public key to `dhis2-bot`'s GitHub account** as a *signing* key:
+   - https://github.com/settings/keys (while logged in as `dhis2-bot`)
+   - Click **New SSH key**, set **Key type → Signing Key**
+   - Paste the contents of `dhis2-bot-signing.pub`
+
+3. **Add the private key as a secret in this repo** (`dhis2/transifex-ci`):
+   - Settings → Secrets and variables → Actions → New repository secret
+   - Name: `DHIS2_BOT_SSH_SIGNING_KEY`
+   - Value: the full content of `dhis2-bot-signing` (including the `-----BEGIN OPENSSH PRIVATE KEY-----` and `-----END OPENSSH PRIVATE KEY-----` lines)
+
+4. **Delete the local keypair** after both halves are stored remotely:
+
+   ```bash
+   shred -u dhis2-bot-signing dhis2-bot-signing.pub
+   ```
+
+5. **Verify** by running the workflow manually (Actions → Transifex App Sync → Run workflow). The next sync PR's commits should appear as **Verified** on GitHub and pass DCO.
+
+### Rotation
+
+To rotate the signing key, repeat steps 1–4 with a fresh keypair, then remove the old public key from the bot's GitHub signing keys list.
