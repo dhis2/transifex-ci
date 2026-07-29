@@ -258,7 +258,7 @@ for p in $projects; do
       if grep -q "$g" OPEN_PRS
       then
         # remove any deprecated open PRs
-        deprecated_versions=("v29" "v30" "v31" "v32" "v33" "v34" "v35" "v36")
+        deprecated_versions=("v29" "v30" "v31" "v32" "v33" "v34" "v35" "v36" "v37")
         deprecated=false
 
         for value in "${deprecated_versions[@]}"; do
