@@ -8,7 +8,7 @@ from textual.widgets import DataTable, Input, Label, Select
 from test_txadmin import ORGANISATION, TOKEN, live
 
 from txadmin.app import ProjectsApp
-from txadmin.client import TransifexClient, ValueTooLongError, new_project_payload
+from txadmin.client import Team, TransifexClient, ValueTooLongError, new_project_payload
 from txadmin.new_project import DEFAULT_TEAM, NewProject, NewProjectScreen, creation_fields, parse_new_project
 from txadmin.validation import parse_project_name, parse_slug, suggest_slug
 
@@ -197,3 +197,56 @@ def test_dialog_stays_open_with_transifex_error_when_creation_is_refused():
     assert still_open is False
     assert rows == len(projects_before)
     assert {p.id for p in client.projects()} == projects_before
+
+
+ANDROID_TEAM = Team(id="o:hisp-uio:t:android", name="Android")
+ZULU_TEAM = Team(id="o:hisp-uio:t:zulu", name="zulu team")
+
+
+def _team_choices(teams_loaded: list[list[Team]], choose: str | None = None) -> tuple[list[str], str, str]:
+    """Opens the dialog, optionally chooses a team, shows each team list in turn as if loaded from Transifex,
+    and returns the offered team ids, the selected team id and the teams note."""
+
+    async def run():
+        app = ProjectsApp(TransifexClient("not-a-real-token", ORGANISATION))
+        async with app.run_test() as pilot:
+            screen = await _open_new_project_dialog(app, pilot)
+            select = screen.query_one("#team", Select)
+            for teams in teams_loaded:
+                screen._show_teams(teams)
+                if choose:
+                    select.value = choose
+                await pilot.pause()
+            offered = [value for _, value in select._options]
+            return offered, select.value, str(screen.query_one("#teams-note", Label).render())
+
+    return asyncio.run(run())
+
+
+def test_teams_are_offered_by_name_with_default_selected():
+    offered, selected, note = _team_choices([[ZULU_TEAM, DEFAULT_TEAM, ANDROID_TEAM]])
+
+    assert offered == [ANDROID_TEAM.id, DEFAULT_TEAM.id, ZULU_TEAM.id]
+    assert selected == DEFAULT_TEAM.id
+    assert note == ""
+
+
+def test_first_team_is_selected_when_default_team_is_missing():
+    offered, selected, _ = _team_choices([[ZULU_TEAM, ANDROID_TEAM]])
+
+    assert offered == [ANDROID_TEAM.id, ZULU_TEAM.id]
+    assert selected == ANDROID_TEAM.id
+
+
+def test_chosen_team_is_kept_when_teams_are_shown_again():
+    _, selected, _ = _team_choices([[DEFAULT_TEAM, ZULU_TEAM], [ANDROID_TEAM, DEFAULT_TEAM, ZULU_TEAM]], choose=ZULU_TEAM.id)
+
+    assert selected == ZULU_TEAM.id
+
+
+def test_empty_team_list_keeps_default_team_and_explains():
+    offered, selected, note = _team_choices([[]])
+
+    assert offered == [DEFAULT_TEAM.id]
+    assert selected == DEFAULT_TEAM.id
+    assert note == f"Could not load teams, so only {DEFAULT_TEAM.name} is offered: Transifex returned no teams."

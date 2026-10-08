@@ -89,11 +89,16 @@ class NewProjectScreen(ModalScreen[tuple[Project, NewProject] | None]):
             self.app.call_from_thread(self._show_teams, teams)
 
     def _show_teams(self, teams: list[Team]) -> None:
+        """Offers the teams by name, keeping the current choice if possible, else the default team, else the first."""
+        if not teams:
+            self._show_teams_error("Transifex returned no teams.")
+            return
+        teams = sorted(teams, key=lambda team: team.name.lower())
+        team_ids = [team.id for team in teams]
         select = self.query_one("#team", Select)
         selected = select.value
-        select.set_options((team.name, team.id) for team in sorted(teams, key=lambda team: team.name.lower()))
-        team_ids = {team.id for team in teams}
-        select.value = selected if selected in team_ids else (DEFAULT_TEAM.id if DEFAULT_TEAM.id in team_ids else teams[0].id)
+        select.set_options((team.name, team.id) for team in teams)
+        select.value = next(team_id for team_id in (selected, DEFAULT_TEAM.id, team_ids[0]) if team_id in team_ids)
         self.query_one("#teams-note", Label).update("")
 
     def _show_teams_error(self, message: str) -> None:
