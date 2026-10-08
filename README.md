@@ -47,3 +47,40 @@ This is a bash script that performs the following:
   - Loops over all branches that have resources in the project.
     - Merges any translation PRs on that branch
 
+
+## txadmin (maintenance TUI)
+
+A terminal UI for maintaining the `hisp-uio` Transifex organisation. It lists all projects with their key attributes (source language, visibility, archived state, last modified, tags). Click a column header to sort.
+
+The CI tags each have a toggle column; select a toggle cell (Enter, or click it twice) and confirm to add or remove the tag in Transifex:
+
+| Column      | Tag                       |
+| ----------- | ------------------------- |
+| Daily Sync  | `jenkins-app-sync`        |
+| Weekly Sync | `jenkins-weekly-app-sync` |
+| Single Sync | `jenkins-single-app-sync` |
+| Automerge   | `jenkins-pr-automerge`    |
+
+The "TM Fill" column toggles the project's translation memory fillup setting in the same way. Transifex can take up to a minute to apply that setting; while any change is saving, its cell shows `…` and the title bar shows "saving…".
+
+Select a "Homepage" cell to edit the project's homepage URL (an http:// or https:// URL of up to 200 characters; empty clears it).
+
+The "Add branches" column lists extra branches to sync that are not found from the project's resources. Select it to edit the comma-separated list. The branches are stored in a single project tag, `extra-sync-branches:main;2.43` (semicolon-separated, because Transifex joins tags with commas); clearing the list removes the tag.
+
+Any other tags are listed in the "Other tags" column. Transifex stores all of a project's tags as one comma-joined string of at most 255 characters, so the tool refuses changes that would exceed that.
+
+It is run with [uv](https://docs.astral.sh/uv/), which creates the environment (Python 3.10 or newer) from `pyproject.toml` and `uv.lock` on first use:
+
+```
+uv run txadmin
+```
+
+The API token is taken from the `TX_TOKEN` environment variable or, if that is unset, from the `tx` CLI config in `~/.transifexrc` (the `token` key, or `password` in older files).
+
+Keys: `r` refresh, `a` switch between basic and advanced columns (basic, the default, hides Homepage, Modified and Other tags), `q` quit.
+
+Tests (the live API tests are skipped unless a token is found; they change tags and settings on the `test-phil-temp` project and restore them afterwards):
+
+```
+uv run pytest
+```
