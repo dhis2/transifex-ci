@@ -16,6 +16,7 @@ API_DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S%z"
 # It stores a project's tags as one comma-joined string.
 MAX_JOINED_TAGS_LENGTH = 255
 MAX_HOMEPAGE_URL_LENGTH = 200
+MAX_REPOSITORY_URL_LENGTH = 255
 
 
 class ValueTooLongError(ValueError):
@@ -64,6 +65,16 @@ class Project:
         )
 
 
+@dataclass(frozen=True)
+class Team:
+    id: str
+    name: str
+
+    @classmethod
+    def from_api(cls, data: dict) -> "Team":
+        return cls(id=data["id"], name=data["attributes"]["name"])
+
+
 class TransifexClient:
     def __init__(self, token: str, organisation: str, timeout: float = REQUEST_TIMEOUT_SECONDS):
         self.organisation_id = f"o:{organisation}"
@@ -82,6 +93,14 @@ class TransifexClient:
             for item in self._get_all("/projects", {"filter[organization]": self.organisation_id})
         ]
 
+    def teams(self) -> list[Team]:
+        return [Team.from_api(item) for item in self._get_all("/teams", {"filter[organization]": self.organisation_id})]
+
+    def create_project(self, **fields) -> Project:
+        """Creates a project in the organisation from new_project_payload's fields and returns it."""
+        payload = new_project_payload(self.organisation_id, **fields)
+        return Project.from_api(self._request("POST", f"{API_BASE}/projects", json=payload)["data"])
+
     def project(self, project_id: str) -> Project:
         return Project.from_api(self._request("GET", f"{API_BASE}/projects/{project_id}")["data"])
 
@@ -94,8 +113,7 @@ class TransifexClient:
 
     def set_homepage_url(self, project_id: str, url: str) -> Project:
         """Replaces the project's homepage URL (empty to clear it) and returns the updated project."""
-        if len(url) > MAX_HOMEPAGE_URL_LENGTH:
-            raise ValueTooLongError("Homepage URL", len(url), MAX_HOMEPAGE_URL_LENGTH)
+        _check_homepage_url(url)
         return self._update_project(project_id, {"homepage_url": url})
 
     def set_translation_memory_fillup(self, project_id: str, enabled: bool) -> Project:
@@ -125,6 +143,47 @@ class TransifexClient:
         if not response.ok:
             raise TransifexError(response.status_code, _error_detail(response))
         return response.json()
+
+
+def new_project_payload(
+    organisation_id: str,
+    *,
+    name: str,
+    slug: str,
+    private: bool,
+    license: str,
+    source_language: str,
+    homepage_url: str,
+    repository_url: str,
+    team_id: str,
+) -> dict:
+    """Builds the JSON:API body for creating a project, rejecting values Transifex cannot store."""
+    _check_homepage_url(homepage_url)
+    if len(repository_url) > MAX_REPOSITORY_URL_LENGTH:
+        raise ValueTooLongError("Repository URL", len(repository_url), MAX_REPOSITORY_URL_LENGTH)
+    return {
+        "data": {
+            "type": "projects",
+            "attributes": {
+                "name": name,
+                "slug": slug,
+                "private": private,
+                "license": license,
+                "homepage_url": homepage_url,
+                "repository_url": repository_url,
+            },
+            "relationships": {
+                "organization": {"data": {"type": "organizations", "id": organisation_id}},
+                "source_language": {"data": {"type": "languages", "id": f"l:{source_language}"}},
+                "team": {"data": {"type": "teams", "id": team_id}},
+            },
+        }
+    }
+
+
+def _check_homepage_url(url: str) -> None:
+    if len(url) > MAX_HOMEPAGE_URL_LENGTH:
+        raise ValueTooLongError("Homepage URL", len(url), MAX_HOMEPAGE_URL_LENGTH)
 
 
 def clean_tags(tags: list[str]) -> tuple[str, ...]:

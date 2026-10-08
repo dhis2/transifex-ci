@@ -8,7 +8,7 @@ import pytest
 from textual.coordinate import Coordinate
 from textual.widgets import DataTable, Input, Label
 
-from txadmin.app import ADVANCED_COLUMN_KEYS, COLUMN_KEYS, TOGGLE_TAGS, ConfirmScreen, EditScreen, ProjectsApp, parse_homepage_url, project_row
+from txadmin.app import ADVANCED_COLUMN_KEYS, COLUMN_KEYS, TOGGLE_TAGS, ConfirmScreen, EditScreen, ProjectsApp, project_row
 from txadmin.client import (
     API_BASE,
     REQUEST_TIMEOUT_SECONDS,
@@ -19,6 +19,7 @@ from txadmin.client import (
     clean_tags,
 )
 from txadmin.credentials import find_token
+from txadmin.validation import parse_homepage_url
 
 ORGANISATION = "hisp-uio"
 TEST_PROJECT_SLUG = "test-phil-temp"
@@ -375,6 +376,23 @@ def test_app_reports_tags_too_long_without_saving(test_project):
 
 
 @live
+def test_app_shows_current_transifex_state_after_failed_save(test_project):
+    client = TransifexClient(TOKEN, ORGANISATION)
+    other_tags = tuple(t for t in test_project.tags if not t.startswith("extra-sync-branches:"))
+
+    async def run():
+        app = ProjectsApp(client)
+        async with app.run_test() as pilot:
+            await app.workers.wait_for_complete()
+            client.set_project_tags(test_project.id, other_tags + ("extra-sync-branches:changed-elsewhere",))
+            await _select_cell(app, pilot, test_project.id, "extra_branches")
+            await _save_text(app, pilot, ", ".join(f"release-{n:03}" for n in range(30)))
+            return str(app.query_one(DataTable).get_cell(test_project.id, "extra_branches"))
+
+    assert asyncio.run(run()) == "changed-elsewhere"
+
+
+@live
 def test_set_translation_memory_fillup_round_trip(test_project):
     client = TransifexClient(TOKEN, ORGANISATION)
     enable = not test_project.translation_memory_fillup
@@ -533,8 +551,8 @@ def test_app_shows_saving_until_save_finishes(test_project):
         async with app.run_test() as pilot:
             await app.workers.wait_for_complete()
             table = app.query_one(DataTable)
-            await _select_cell(app, pilot, test_project.id, tag)
-            await pilot.press("y")
+            # Read the state before yielding, so the save cannot have finished yet.
+            app.update_tags(test_project.id, tag, lambda tags: tags + (tag,))
             during = (str(table.get_cell(test_project.id, tag)), app.sub_title)
             await app.workers.wait_for_complete()
             await pilot.pause()

@@ -3,7 +3,6 @@
 
 from collections.abc import Callable
 from typing import Optional, TypeVar
-from urllib.parse import urlparse
 
 from rich.text import Text
 from textual import work
@@ -14,6 +13,8 @@ from textual.widgets import Button, DataTable, Footer, Header, Input, Label
 
 from txadmin.branches import extra_branches, is_extra_branches_tag, parse_branch_list, with_extra_branches
 from txadmin.client import Project, TransifexClient, TransifexError, ValueTooLongError
+from txadmin.new_project import DEFAULT_TEAM, TM_GROUP_FOR_DEFAULT_TEAM, NewProject, NewProjectScreen
+from txadmin.validation import parse_homepage_url
 
 T = TypeVar("T")
 
@@ -58,15 +59,6 @@ SAVING = Text("…", justify="center")
 
 def _sort_key(value: str | Text) -> str:
     return str(value).lower()
-
-
-def parse_homepage_url(text: str) -> str:
-    """Parses a homepage URL as typed by the user; empty text clears the homepage."""
-    url = text.strip()
-    parsed = urlparse(url)
-    if url and (parsed.scheme not in ("http", "https") or not parsed.netloc):
-        raise ValueError("Homepage must be an http:// or https:// URL, or empty.")
-    return url
 
 
 def project_row(project: Project) -> tuple[str, ...]:
@@ -156,12 +148,14 @@ class EditScreen(ModalScreen[Optional[T]]):
 class ProjectsApp(App):
     TITLE = "Transifex maintenance"
     CSS = """
-    ConfirmScreen, EditScreen {
+    ModalScreen {
         align: center middle;
     }
     .dialog {
         width: 70;
         height: auto;
+        max-height: 100%;
+        overflow-y: auto;
         padding: 1 2;
         border: thick $primary;
         background: $surface;
@@ -174,6 +168,9 @@ class ProjectsApp(App):
         width: 1fr;
         margin: 0 1;
     }
+    .dialog Label {
+        width: 100%;
+    }
     .dialog #error {
         color: $error;
     }
@@ -181,6 +178,7 @@ class ProjectsApp(App):
     BINDINGS = [
         ("r", "refresh", "Refresh"),
         ("a", "toggle_advanced", "Basic/Advanced"),
+        ("n", "new_project", "New project"),
         ("q", "quit", "Quit"),
     ]
 
@@ -251,8 +249,31 @@ class ProjectsApp(App):
         self._projects = {project.id: project for project in projects}
         self._rebuild_table()
         self.query_one(DataTable).loading = False
-        noun = "project" if len(projects) == 1 else "projects"
-        self._show_status(f"{len(projects)} {noun}")
+        self._show_project_count()
+
+    def _show_project_count(self) -> None:
+        noun = "project" if len(self._projects) == 1 else "projects"
+        self._show_status(f"{len(self._projects)} {noun}")
+
+    def action_new_project(self) -> None:
+        def created(result: tuple[Project, NewProject] | None) -> None:
+            if result is None:
+                return
+            project, new_project = result
+            self._projects[project.id] = project
+            self._rebuild_table()
+            self._show_project_count()
+            self.notify(f"Created {project.name}.", title="Project created")
+            if new_project.team_id == DEFAULT_TEAM.id:
+                self.notify(
+                    f"Add {project.name} to the {TM_GROUP_FOR_DEFAULT_TEAM} translation memory group in the Transifex web UI; "
+                    "the API cannot do this.",
+                    title="Translation memory group",
+                    severity="warning",
+                    timeout=30,
+                )
+
+        self.push_screen(NewProjectScreen(self.client), created)
 
     def _show_error(self, message: str) -> None:
         self.query_one(DataTable).loading = False
@@ -345,12 +366,19 @@ class ProjectsApp(App):
         try:
             updated = save()
         except (TransifexError, ValueTooLongError, OSError) as error:
-            self.call_from_thread(self._finish_save, project_id, None, str(error))
+            self.call_from_thread(self._finish_save, project_id, self._current_project(project_id), str(error))
         else:
             self.call_from_thread(self._finish_save, project_id, updated, None)
 
+    def _current_project(self, project_id: str) -> Project | None:
+        """Re-reads a project after a failed save, which Transifex may still have applied (e.g. after a timeout)."""
+        try:
+            return self.client.project(project_id)
+        except (TransifexError, OSError):
+            return None
+
     def _finish_save(self, project_id: str, updated: Project | None, error: str | None) -> None:
-        """Shows the saved project, or the last known state of the project and the error."""
+        """Shows the project as Transifex has it, falling back to the last known state, and any error."""
         self._saves_in_progress -= 1
         self._show_status(self._status)
         self._show_project(updated or self._projects[project_id])
