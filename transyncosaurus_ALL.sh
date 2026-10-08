@@ -117,6 +117,27 @@ tx_fix() {
 
 }
 
+# Print every item of a Transifex API collection, one JSON object per line, following the
+# "next" links of the paginated responses (the API returns at most 150 items per page).
+# The "next" links contain literal brackets (e.g. page[cursor]), so curl's URL globbing is turned off.
+tx_get_all() {
+  local url=$1
+  local page
+  while [[ -n "$url" ]]; do
+    page=$(curl -s --globoff -X GET "$url" -H "Content: application/json" -H "Authorization: Bearer $TXTOKEN")
+    echo "$page" | jq -c '.data[]?'
+    url=$(echo "$page" | jq -r '.links.next // empty')
+  done
+}
+
+# List the extra branches to sync, one JSON-quoted name per line, from the project's
+# "extra-sync-branches:<branch>;<branch>" tag (set with txadmin). Takes the project attributes JSON file.
+extra_sync_branches() {
+  local project_json=$1
+  jq '.tags[] | gsub("^\\s+|\\s+$"; "") | select(startswith("extra-sync-branches:"))
+    | ltrimstr("extra-sync-branches:") | split(";")[] | gsub("^\\s+|\\s+$"; "") | select(length > 0)' "$project_json"
+}
+
 git_setup() {
   git config user.email "apps@dhis2.org"
   git config user.name "dhis2-bot"
@@ -209,7 +230,7 @@ make_branch_pr() {
 
 # --- starting point
 tx_init
-projects=$(curl -s -X GET "$TX_API3/projects?filter%5Borganization%5D=o%3Ahisp-uio" -H "Content: application/json" -H "Authorization: Bearer $TXTOKEN" | jq '.data[].attributes.slug')
+projects=$(tx_get_all "$TX_API3/projects?filter%5Borganization%5D=o%3Ahisp-uio" | jq '.attributes.slug')
 mkdir temp$$
 pushd temp$$
 
@@ -220,6 +241,7 @@ for p in $projects; do
   name=$(cat /tmp/proj$$ | jq '.name')
   tags=$(cat /tmp/proj$$ | jq '.tags | join(",")')
   giturl=$(cat /tmp/proj$$ | jq '.homepage_url')
+  extra_branches=$(extra_sync_branches /tmp/proj$$)
   cleanurl=${giturl//\"/}
   # trim the name of the repo from the full git url (everything after $GITHUB_BASE)
   gitslug=${cleanurl:${#GITHUB_BASE}}
@@ -250,7 +272,10 @@ for p in $projects; do
     # The branch names are at the beginnig of each resource slug, followed by double hyphen '--'
     # The `2.xx` branches appear as `2-xx` and must be converted back (replace hyphen with period)
     # We only want each branch to be listed once
-    branches=$(curl -s -X GET "$TX_API3/resources?filter%5Bproject%5D=o%3Ahisp-uio%3Ap%3A${p//\"/}" -H "Content: application/json" -H "Authorization: Bearer $TXTOKEN" | jq '.data[].attributes.slug | split("--")[0] | split("-") | join(".")' | uniq)
+    branches=$(tx_get_all "$TX_API3/resources?filter%5Bproject%5D=o%3Ahisp-uio%3Ap%3A${p//\"/}" | jq '.attributes.slug | split("--")[0] | split("-") | join(".")' | uniq)
+    # Add the extra branches from the project's tags, which may not have resources yet, listing each branch once
+    echo "    Extra branches: ${extra_branches//$'\n'/ }"
+    branches=$(printf '%s\n%s\n' "$branches" "$extra_branches" | awk 'NF && !seen[$0]++')
     #temporarily add new release branches
     #branches+=("2.40")
     # echo "Branches: $branches"
