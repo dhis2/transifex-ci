@@ -65,6 +65,8 @@ The "TM Fill" column toggles the project's translation memory fillup setting in 
 
 Select a "Homepage" cell to edit the project's homepage URL (an http:// or https:// URL of up to 200 characters; empty clears it).
 
+In advanced mode, the "Branches" column lists the branches each project has resources for, worked out from the resource slugs as the sync script does (the part before `--`, with `-` turned into `.`; resources without `--` are skipped). Branches are only loaded for projects with a sync type or automerge enabled (the others show `—`), in the background when advanced mode is first shown, again on refresh, and for a project as soon as one of those is enabled.
+
 The "Add branches" column lists extra branches to sync that are not found from the project's resources. Select it to edit the comma-separated list. The branches are stored in a single project tag, `extra-sync-branches:main;2.43` (semicolon-separated, because Transifex joins tags with commas); clearing the list removes the tag.
 
 Press `n` to create a project. The dialog asks for the name, slug (suggested from the name until you edit it), homepage and team (DHIS 2 Core Apps by default). The project is created public, with the `permissive_open_source` license, English as its source language, and the homepage as its repository URL. The Transifex API cannot manage translation memory groups, so after creating a DHIS 2 Core Apps project the tool reminds you to add it to the `dhis2-ui` group in the Transifex web UI. Creating projects and listing teams need an organisation admin's token.
@@ -79,7 +81,7 @@ uv run txadmin
 
 The API token is taken from the `TX_TOKEN` environment variable or, if that is unset, from the `tx` CLI config in `~/.transifexrc` (the `token` key, or `password` in older files).
 
-Keys: `r` refresh, `a` switch between basic and advanced columns (basic, the default, hides Homepage, Modified and Other tags), `n` new project, `q` quit.
+Keys: `r` refresh, `a` switch between basic and advanced columns (basic, the default, hides Homepage, Branches, Modified and Other tags), `n` new project, `q` quit.
 
 Tests (the live API tests are skipped unless a token is found; they change tags and settings on the `test-phil-temp` project and restore them afterwards):
 

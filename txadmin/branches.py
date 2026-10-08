@@ -1,8 +1,19 @@
-# Encodes the extra branches to sync for a project in a single project tag.
+# Works out a project's sync branches: those found from its resources, and the extra ones in a project tag.
 # The tag looks like "extra-sync-branches:main;2.43"; branch names are separated by semicolons.
+
+from collections.abc import Iterable
 
 EXTRA_BRANCHES_PREFIX = "extra-sync-branches:"
 BRANCH_SEPARATOR = ";"
+
+
+def resource_branches(resource_slugs: Iterable[str]) -> tuple[str, ...]:
+    """Derives the branches a project has resources for, as transyncosaurus_ALL.sh does: the part of each
+    resource slug before "--", with hyphens turned back into dots (so "2-43--app" becomes "2.43").
+    Slugs without "--" do not name a branch and are skipped."""
+    return tuple(
+        dict.fromkeys(slug.split("--")[0].replace("-", ".") for slug in resource_slugs if "--" in slug)
+    )
 
 
 def is_extra_branches_tag(tag: str) -> bool:

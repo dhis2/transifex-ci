@@ -8,7 +8,16 @@ import pytest
 from textual.coordinate import Coordinate
 from textual.widgets import DataTable, Input, Label
 
-from txadmin.app import ADVANCED_COLUMN_KEYS, COLUMN_KEYS, TOGGLE_TAGS, ConfirmScreen, EditScreen, ProjectsApp, project_row
+from txadmin.app import (
+    ADVANCED_COLUMN_KEYS,
+    COLUMN_KEYS,
+    TOGGLE_TAGS,
+    ConfirmScreen,
+    EditScreen,
+    ProjectsApp,
+    project_row,
+    uses_branches,
+)
 from txadmin.client import (
     API_BASE,
     REQUEST_TIMEOUT_SECONDS,
@@ -18,6 +27,7 @@ from txadmin.client import (
     ValueTooLongError,
     clean_tags,
 )
+from txadmin.branches import resource_branches
 from txadmin.credentials import find_token
 from txadmin.validation import parse_homepage_url
 
@@ -69,7 +79,7 @@ def test_clean_tags_strips_whitespace_and_drops_empty_and_duplicate_tags():
 
 def _row_cells(tags: list[str]) -> dict[str, str]:
     payload = {**PROJECT_PAYLOAD, "attributes": {**PROJECT_PAYLOAD["attributes"], "tags": tags}}
-    return dict(zip(COLUMN_KEYS, map(str, project_row(Project.from_api(payload))), strict=True))
+    return dict(zip(COLUMN_KEYS, map(str, project_row(Project.from_api(payload), "master, 2.43")), strict=True))
 
 
 def test_project_row_renders_every_column():
@@ -85,6 +95,7 @@ def test_project_row_renders_every_column():
         "jenkins-single-app-sync": "○",
         "jenkins-pr-automerge": "◉",
         "tm_fill": "◉",
+        "branches": "master, 2.43",
         "extra_branches": "",
         "modified": "2026-09-30 12:34",
         "other_tags": "",
@@ -99,7 +110,7 @@ def test_project_row_toggles_need_exact_tags_and_others_are_listed():
 
 
 def test_project_row_styles_toggles_as_radio_buttons():
-    row = project_row(Project.from_api(PROJECT_PAYLOAD))
+    row = project_row(Project.from_api(PROJECT_PAYLOAD), "")
     cells = dict(zip(COLUMN_KEYS, row, strict=True))
 
     assert (cells["jenkins-app-sync"].style, cells["jenkins-app-sync"].justify) == ("bold green", "center")
@@ -591,3 +602,166 @@ def test_app_restores_cell_and_reports_error_when_save_times_out(test_project):
     assert len(notifications) == 1
     assert "timed out" in notifications[0]
     assert client.project(test_project.id).tags == test_project.tags
+
+
+@live
+def test_resource_slugs_lists_every_resource(test_project):
+    slugs = TransifexClient(TOKEN, ORGANISATION).resource_slugs(test_project.id)
+
+    assert slugs
+    assert len(set(slugs)) == len(slugs)
+
+
+@live
+def test_basic_mode_does_not_load_branches(test_project):
+    client = TransifexClient(TOKEN, ORGANISATION)
+
+    async def run():
+        app = ProjectsApp(client)
+        async with app.run_test() as pilot:
+            await app.workers.wait_for_complete()
+            await pilot.pause()
+            return app._branches_requested, _column_keys(app)
+
+    requested, columns = asyncio.run(run())
+
+    assert requested is False
+    assert "branches" not in columns
+
+
+def _set_uses_branches(client: TransifexClient, project: Project, enabled: bool) -> Project:
+    """Sets the project's tags in Transifex so that exactly Daily Sync, or no sync type or automerge, is enabled."""
+    others = tuple(tag for tag in project.tags if tag not in TOGGLE_TAGS)
+    return client.set_project_tags(project.id, others + (("jenkins-app-sync",) if enabled else ()))
+
+
+def test_uses_branches_for_any_sync_type_or_automerge():
+    def project(tags: list[str]) -> Project:
+        return Project.from_api({**PROJECT_PAYLOAD, "attributes": {**PROJECT_PAYLOAD["attributes"], "tags": tags}})
+
+    assert [uses_branches(project([tag])) for tag in TOGGLE_TAGS] == [True, True, True, True]
+    assert uses_branches(project(["extra-sync-branches:main", "docs"])) is False
+
+
+@live
+def test_advanced_mode_shows_branches_from_resources(test_project):
+    client = TransifexClient(TOKEN, ORGANISATION)
+    _set_uses_branches(client, test_project, True)
+    expected = ", ".join(resource_branches(client.resource_slugs(test_project.id)))
+
+    async def run():
+        app = ProjectsApp(client)
+        async with app.run_test() as pilot:
+            await app.workers.wait_for_complete()
+            # Read the cell before yielding, so the branches cannot have arrived yet.
+            app.action_toggle_advanced()
+            before = str(app.query_one(DataTable).get_cell(test_project.id, "branches"))
+            await app.workers.wait_for_complete()
+            await pilot.pause()
+            loaded = str(app.query_one(DataTable).get_cell(test_project.id, "branches"))
+            await pilot.press("a", "a")
+            await pilot.pause()
+            after_switching = str(app.query_one(DataTable).get_cell(test_project.id, "branches"))
+            return before, loaded, after_switching
+
+    before, loaded, after_switching = asyncio.run(run())
+
+    assert before == "…"
+    assert loaded == expected
+    assert after_switching == expected
+
+
+@live
+def test_refresh_in_advanced_mode_reloads_branches(test_project):
+    client = TransifexClient(TOKEN, ORGANISATION)
+    _set_uses_branches(client, test_project, True)
+    expected = ", ".join(resource_branches(client.resource_slugs(test_project.id)))
+
+    async def run():
+        app = ProjectsApp(client)
+        async with app.run_test() as pilot:
+            await app.workers.wait_for_complete()
+            await pilot.press("a")
+            await app.workers.wait_for_complete()
+            generation = app._branches_generation
+            await pilot.press("r")
+            await app.workers.wait_for_complete()
+            await app.workers.wait_for_complete()
+            await pilot.pause()
+            return app._branches_generation > generation, str(app.query_one(DataTable).get_cell(test_project.id, "branches"))
+
+    assert asyncio.run(run()) == (True, expected)
+
+
+@live
+def test_branch_load_failure_is_shown_once(test_project):
+    client = TransifexClient(TOKEN, ORGANISATION)
+    _set_uses_branches(client, test_project, True)
+
+    async def run():
+        app = ProjectsApp(client)
+        async with app.run_test() as pilot:
+            await app.workers.wait_for_complete()
+            client.timeout = 0.000001
+            await pilot.press("a")
+            await app.workers.wait_for_complete()
+            await pilot.pause()
+            client.timeout = REQUEST_TIMEOUT_SECONDS
+            notifications = [n for n in app._notifications if n.title == "Could not load branches"]
+            return str(app.query_one(DataTable).get_cell(test_project.id, "branches")), len(notifications)
+
+    assert asyncio.run(run()) == ("failed", 1)
+
+
+@live
+def test_columns_widen_to_show_updated_cells(test_project):
+    client = TransifexClient(TOKEN, ORGANISATION)
+    _set_uses_branches(client, test_project, True)
+    branches = tuple(f"release-{n:02}" for n in range(12))
+    url = "https://example.org/" + "a-long-homepage-path/" * 4
+
+    async def run():
+        app = ProjectsApp(client)
+        async with app.run_test(size=(200, 24)) as pilot:
+            await app.workers.wait_for_complete()
+            await pilot.press("a")
+            await app.workers.wait_for_complete()
+            app._show_branches(app._branches_generation, test_project.id, branches)
+            await _select_cell(app, pilot, test_project.id, "homepage")
+            await _save_text(app, pilot, url)
+            await pilot.pause()
+            columns = app.query_one(DataTable).columns
+            return columns["branches"].content_width, columns["homepage"].content_width
+
+    branches_width, homepage_width = asyncio.run(run())
+
+    assert branches_width >= len(", ".join(branches))
+    assert homepage_width >= len(url)
+
+
+@live
+def test_branches_are_skipped_until_a_sync_type_or_automerge_is_enabled(test_project):
+    client = TransifexClient(TOKEN, ORGANISATION)
+    _set_uses_branches(client, test_project, False)
+    expected = ", ".join(resource_branches(client.resource_slugs(test_project.id)))
+
+    async def run():
+        app = ProjectsApp(client)
+        async with app.run_test() as pilot:
+            await app.workers.wait_for_complete()
+            table = app.query_one(DataTable)
+            await pilot.press("a")
+            await app.workers.wait_for_complete()
+            await pilot.pause()
+            states = [(str(table.get_cell(test_project.id, "branches")), test_project.id in app._branches)]
+            for _ in range(2):
+                await _select_cell(app, pilot, test_project.id, "jenkins-app-sync")
+                await pilot.press("y")
+                await app.workers.wait_for_complete()
+                await pilot.pause()
+                await app.workers.wait_for_complete()
+                await pilot.pause()
+                states.append((str(table.get_cell(test_project.id, "branches")), test_project.id in app._branches))
+            return states
+
+    assert asyncio.run(run()) == [("—", False), (expected, True), ("—", True)]

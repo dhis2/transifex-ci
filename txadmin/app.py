@@ -2,6 +2,7 @@
 # Shows projects in a sortable table; selecting a toggle cell flips that setting, selecting a text cell edits it.
 
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Optional, TypeVar
 
 from rich.text import Text
@@ -11,7 +12,7 @@ from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, DataTable, Footer, Header, Input, Label
 
-from txadmin.branches import extra_branches, is_extra_branches_tag, parse_branch_list, with_extra_branches
+from txadmin.branches import extra_branches, is_extra_branches_tag, parse_branch_list, resource_branches, with_extra_branches
 from txadmin.client import Project, TransifexClient, TransifexError, ValueTooLongError
 from txadmin.new_project import DEFAULT_TEAM, TM_GROUP_FOR_DEFAULT_TEAM, NewProject, NewProjectScreen
 from txadmin.validation import parse_homepage_url
@@ -35,12 +36,15 @@ COLUMNS = (
     ("Archived", "archived"),
     *TAG_COLUMNS,
     ("TM Fill", "tm_fill"),
+    ("Branches", "branches"),
     ("Add branches", "extra_branches"),
     ("Modified", "modified"),
     ("Other tags", "other_tags"),
 )
 COLUMN_KEYS = tuple(key for _, key in COLUMNS)
-ADVANCED_COLUMN_KEYS = frozenset({"homepage", "modified", "other_tags"})
+ADVANCED_COLUMN_KEYS = frozenset({"homepage", "branches", "modified", "other_tags"})
+# Resource listings fetched at once when loading branches, well within Transifex's 500 requests a minute.
+BRANCH_LOADERS = 4
 
 
 def _flag(value: bool) -> str:
@@ -55,13 +59,22 @@ def _toggle(value: bool) -> Text:
 
 
 SAVING = Text("…", justify="center")
+LOADING = Text("…")
+LOAD_FAILED = Text("failed", style="red")
+NO_BRANCH_JOBS = Text("—", style="dim")
+
+
+def uses_branches(project: Project) -> bool:
+    """Whether any sync type or automerge is enabled for the project, so the CI scripts work on its branches."""
+    return any(tag in project.tags for tag in TOGGLE_TAGS)
 
 
 def _sort_key(value: str | Text) -> str:
     return str(value).lower()
 
 
-def project_row(project: Project) -> tuple[str, ...]:
+def project_row(project: Project, branches: str | Text) -> tuple[str | Text, ...]:
+    """The project's cells in column order; branches come from its resources, so they are passed in."""
     return (
         project.name,
         project.slug,
@@ -71,6 +84,7 @@ def project_row(project: Project) -> tuple[str, ...]:
         _flag(project.archived),
         *(_toggle(tag in project.tags) for tag in TOGGLE_TAGS),
         _toggle(project.translation_memory_fillup),
+        branches,
         ", ".join(extra_branches(project.tags)),
         project.modified.strftime("%Y-%m-%d %H:%M"),
         ", ".join(tag for tag in project.tags if tag not in TOGGLE_TAGS and not is_extra_branches_tag(tag)),
@@ -191,6 +205,10 @@ class ProjectsApp(App):
         self._advanced = False
         self._status = "loading…"
         self._saves_in_progress = 0
+        self._branches: dict[str, tuple[str, ...]] = {}
+        self._branch_load_failures: set[str] = set()
+        self._branches_requested = False
+        self._branches_generation = 0
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -208,6 +226,7 @@ class ProjectsApp(App):
         """Switches between the basic and advanced column sets."""
         self._advanced = not self._advanced
         self._rebuild_table()
+        self._load_branches_if_shown()
 
     def _rebuild_table(self) -> None:
         """Recreates the table's columns for the current mode and fills it from the loaded projects."""
@@ -223,7 +242,7 @@ class ProjectsApp(App):
         self._sort()
 
     def _visible_cells(self, project: Project) -> list[str | Text]:
-        cells = dict(zip(COLUMN_KEYS, project_row(project)))
+        cells = dict(zip(COLUMN_KEYS, project_row(project, self._branches_cell(project))))
         return [cells[key] for _, key in self.visible_columns()]
 
     def _show_status(self, status: str) -> None:
@@ -232,6 +251,7 @@ class ProjectsApp(App):
         self.sub_title = f"{self.client.organisation_id} · {status}{saving}"
 
     def action_refresh(self) -> None:
+        self._forget_branches()
         self._show_status("loading…")
         self.query_one(DataTable).loading = True
         self.load_projects()
@@ -250,6 +270,7 @@ class ProjectsApp(App):
         self._rebuild_table()
         self.query_one(DataTable).loading = False
         self._show_project_count()
+        self._load_branches_if_shown()
 
     def _show_project_count(self) -> None:
         noun = "project" if len(self._projects) == 1 else "projects"
@@ -261,6 +282,7 @@ class ProjectsApp(App):
                 return
             project, new_project = result
             self._projects[project.id] = project
+            self._branches[project.id] = ()
             self._rebuild_table()
             self._show_project_count()
             self.notify(f"Created {project.name}.", title="Project created")
@@ -274,6 +296,70 @@ class ProjectsApp(App):
                 )
 
         self.push_screen(NewProjectScreen(self.client), created)
+
+    def _branches_cell(self, project: Project) -> str | Text:
+        if not uses_branches(project):
+            return NO_BRANCH_JOBS
+        if project.id in self._branches:
+            return ", ".join(self._branches[project.id])
+        return LOAD_FAILED if project.id in self._branch_load_failures else LOADING
+
+    def _forget_branches(self) -> None:
+        """Discards loaded branches, including results still arriving from an earlier load."""
+        self._branches = {}
+        self._branch_load_failures = set()
+        self._branches_requested = False
+        self._branches_generation += 1
+
+    def _load_branches_if_shown(self) -> None:
+        """Starts loading branches for projects that use them, once the Branches column is first shown for these projects."""
+        if self._advanced and self._projects and not self._branches_requested:
+            self._branches_requested = True
+            self._load_branches([project for project in self._projects.values() if uses_branches(project)])
+
+    def _load_branches_if_newly_used(self, project: Project) -> None:
+        """Loads a project's branches when a sync type or automerge has just been enabled for it."""
+        known = project.id in self._branches or project.id in self._branch_load_failures
+        if self._branches_requested and uses_branches(project) and not known:
+            self._load_branches([project])
+
+    def _load_branches(self, projects: list[Project]) -> None:
+        if projects:
+            self.load_branches(self._branches_generation, [project.id for project in projects])
+
+    @work(thread=True, group="branches")
+    def load_branches(self, generation: int, project_ids: list[str]) -> None:
+        """Lists the projects' resources a few at a time; stops early once a refresh has made the results stale."""
+        failures: list[str] = []
+        executor = ThreadPoolExecutor(max_workers=BRANCH_LOADERS)
+        futures = {executor.submit(self.client.resource_slugs, project_id): project_id for project_id in project_ids}
+        for future in as_completed(futures):
+            if generation != self._branches_generation:
+                break
+            project_id = futures[future]
+            try:
+                branches = resource_branches(future.result())
+            except (TransifexError, OSError) as error:
+                failures.append(str(error))
+                self.call_from_thread(self._show_branches, generation, project_id, None)
+            else:
+                self.call_from_thread(self._show_branches, generation, project_id, branches)
+        executor.shutdown(wait=False, cancel_futures=True)
+        if failures and generation == self._branches_generation:
+            message = f"{len(failures)} project(s) failed, e.g. {failures[0]}"
+            self.call_from_thread(self.notify, message, title="Could not load branches", severity="error", timeout=10)
+
+    def _show_branches(self, generation: int, project_id: str, branches: tuple[str, ...] | None) -> None:
+        """Shows one project's branches, or that loading them failed, unless a refresh has made them stale."""
+        if generation != self._branches_generation or project_id not in self._projects:
+            return
+        if branches is None:
+            self._branch_load_failures.add(project_id)
+        else:
+            self._branches[project_id] = branches
+        if self._advanced:
+            cell = self._branches_cell(self._projects[project_id])
+            self.query_one(DataTable).update_cell(project_id, "branches", cell, update_width=True)
 
     def _show_error(self, message: str) -> None:
         self.query_one(DataTable).loading = False
@@ -389,4 +475,5 @@ class ProjectsApp(App):
         self._projects[project.id] = project
         table = self.query_one(DataTable)
         for (_, key), value in zip(self.visible_columns(), self._visible_cells(project)):
-            table.update_cell(project.id, key, value)
+            table.update_cell(project.id, key, value, update_width=True)
+        self._load_branches_if_newly_used(project)

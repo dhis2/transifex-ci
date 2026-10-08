@@ -101,6 +101,9 @@ class TransifexClient:
         payload = new_project_payload(self.organisation_id, **fields)
         return Project.from_api(self._request("POST", f"{API_BASE}/projects", json=payload)["data"])
 
+    def resource_slugs(self, project_id: str) -> list[str]:
+        return [item["attributes"]["slug"] for item in self._get_all("/resources", {"filter[project]": project_id})]
+
     def project(self, project_id: str) -> Project:
         return Project.from_api(self._request("GET", f"{API_BASE}/projects/{project_id}")["data"])
 
