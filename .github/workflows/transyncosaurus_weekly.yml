@@ -10,7 +10,7 @@ jobs:
 
   build:
     name: Synchronise translations
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v2
     - name: Set up commit signing
