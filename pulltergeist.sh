@@ -49,8 +49,9 @@ log() {
 trap 'log "Error on line ${LINENO}: ${BASH_COMMAND}"' ERR
 
 
-GITHUB_BASE="https://github.com/dhis2/"
-GITHUB_CLONE_BASE="https://${GITHUB_USER}:${GITHUB_PASSWORD}@github.com/dhis2/"
+GITHUB_CLONE_BASE="https://${GITHUB_USER}:${GITHUB_PASSWORD}@github.com/"
+# Transifex project homepages hold the repository URL: https://github.com/<owner>/<repo>
+GITHUB_REPO_URL_PATTERN='^https://github\.com/([^/]+)/([^/]+)/?$'
 TX_API3=https://rest.api.transifex.com
 MERGE_FLAG="jenkins-pr-automerge"
 
@@ -219,14 +220,20 @@ for p in $projects; do
   tags=$(cat /tmp/proj$$ | jq '.tags | join(",")')
   giturl=$(cat /tmp/proj$$ | jq '.homepage_url')
   cleanurl=${giturl//\"/}
-  # trim the name of the repo from the full git url (everything after $GITHUB_BASE)
-  gitslug=${cleanurl:${#GITHUB_BASE}}
   rm /tmp/proj$$
 
   # Loop through all APP projects
   if [[ $tags == *"$MERGE_FLAG"* ]]; then
 
-    log "Attempting to merge translation PRs for $name : $giturl : $gitslug"
+    if [[ ! $cleanurl =~ $GITHUB_REPO_URL_PATTERN ]]; then
+      log "Skipping $name : homepage '$cleanurl' is not a GitHub repository URL"
+      continue
+    fi
+    # owner/repo, used to clone; the repo name alone is the clone folder
+    gitpath="${BASH_REMATCH[1]}/${BASH_REMATCH[2]}"
+    gitslug=${BASH_REMATCH[2]}
+
+    log "Attempting to merge translation PRs for $name : $giturl : $gitpath"
 
     # Get the list of branches translated in this project
     # The branch names are at the beginnig of each resource slug, followed by double hyphen '--'
@@ -236,8 +243,8 @@ for p in $projects; do
     log "Branches discovered: $(echo "$branches" | tr '\n' ' ')"
 
     # clone the project repository and go into it
-    log "Cloning ${GITHUB_CLONE_BASE}${gitslug}"
-    git clone --depth 1 --no-single-branch ${GITHUB_CLONE_BASE}${gitslug}
+    log "Cloning ${gitpath}"
+    git clone --depth 1 --no-single-branch "${GITHUB_CLONE_BASE}${gitpath}" "$gitslug"
     pushd "$gitslug"
     git_setup
 
