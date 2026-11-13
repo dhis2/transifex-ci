@@ -29,8 +29,9 @@ fi
 
 # set -xv
 
-GITHUB_BASE="https://github.com/dhis2/"
-GITHUB_CLONE_BASE="https://${GITHUB_USER}:${GITHUB_PASSWORD}@github.com/dhis2/"
+GITHUB_CLONE_BASE="https://${GITHUB_USER}:${GITHUB_PASSWORD}@github.com/"
+# Transifex project homepages hold the repository URL: https://github.com/<owner>/<repo>
+GITHUB_REPO_URL_PATTERN='^https://github\.com/([^/]+)/([^/]+)/?$'
 SYNC_DATE=$(date +"%Y%m%d_%H%M%S")
 TX_API3=https://rest.api.transifex.com
 
@@ -243,8 +244,6 @@ for p in $projects; do
   giturl=$(cat /tmp/proj$$ | jq '.homepage_url')
   extra_branches=$(extra_sync_branches /tmp/proj$$)
   cleanurl=${giturl//\"/}
-  # trim the name of the repo from the full git url (everything after $GITHUB_BASE)
-  gitslug=${cleanurl:${#GITHUB_BASE}}
   rm /tmp/proj$$
   
   # Debug output to show project details
@@ -255,7 +254,15 @@ for p in $projects; do
   # Loop through all APP projects
   if [[ $tags == *"${SYNC_FLAG}"* ]]; then
 
-    echo "Syncing $name : $giturl : $gitslug"
+    if [[ ! $cleanurl =~ $GITHUB_REPO_URL_PATTERN ]]; then
+      echo "Skipping $name : homepage '$cleanurl' is not a GitHub repository URL"
+      continue
+    fi
+    # owner/repo, used to clone; the repo name alone is the clone folder
+    gitpath="${BASH_REMATCH[1]}/${BASH_REMATCH[2]}"
+    gitslug=${BASH_REMATCH[2]}
+
+    echo "Syncing $name : $giturl : $gitpath"
 
     tx_pull_mode="default"
     #if [[ $gitslug == "dhis2-android-capture-app" ]]; then
@@ -281,7 +288,7 @@ for p in $projects; do
     # echo "Branches: $branches"
 
     # clone the project repository and go into it
-    git clone ${GITHUB_CLONE_BASE}${gitslug}
+    git clone "${GITHUB_CLONE_BASE}${gitpath}" "$gitslug"
     pushd "$gitslug"
     git_setup
 
