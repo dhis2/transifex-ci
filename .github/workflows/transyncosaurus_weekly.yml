@@ -12,17 +12,12 @@ jobs:
     name: Synchronise translations
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v7
     - name: Set up commit signing
       uses: dhis2/action-commit-signing@v1
       with:
         ssh-signing-key: ${{ secrets.DHIS2_BOT_SSH_SIGNING_KEY }}
         ssh-signing-key-passphrase: ${{ secrets.DHIS2_BOT_SSH_SIGNING_PASSPHRASE }}
-    - name: Set up Python 3.8
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.8'
-        
     - name: Install dependencies
       run: curl -o- https://raw.githubusercontent.com/transifex/cli/master/install.sh | bash
       shell: bash
