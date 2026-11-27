@@ -32,7 +32,7 @@ jobs:
 
   build:
     name: Synchronise translations
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: langsync
     steps:
     - uses: actions/checkout@v2
